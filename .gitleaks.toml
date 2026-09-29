@@ -1,0 +1,10 @@
+# Standardregeln von Gitleaks, dazu erlaubte Beispielschlüssel aus README und Tests
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Beispielschlüssel, keine echten Geheimnisse"
+regexes = [
+  '''^dev-praxis-(admin|empfang)$''',
+  '''^sk-geheim-1234567890$''',
+]

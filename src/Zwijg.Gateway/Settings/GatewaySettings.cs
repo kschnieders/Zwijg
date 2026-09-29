@@ -1,0 +1,204 @@
+using Zwijg.Core.Routing;
+using Zwijg.Core.Security;
+
+namespace Zwijg.Gateway.Settings;
+
+// Alles, was in der Oberfläche geändert werden kann. Liegt als JSON im data Ordner.
+public sealed class GatewaySettings
+{
+    // Format der Datei. Steigt, wenn sich etwas ändert, siehe SettingsStore.Migrations
+    public int SchemaVersion { get; set; }
+
+    // Beim Öffnen der Übersicht bei GitHub nachsehen, ob es eine neuere Version gibt, höchstens alle 12 Stunden
+    public bool UpdateCheck { get; set; } = true;
+
+    public List<Connection> Connections { get; set; } = [];
+
+    // Welche Verbindung für sensible Anfragen (lokal) und welche für unkritische (Cloud) genutzt wird
+    public string? LocalConnectionId { get; set; }
+    public string? CloudConnectionId { get; set; }
+
+    public RoutingOptions Routing { get; set; } = new();
+    public InjectionOptions Injection { get; set; } = new();
+    public bool StorePrompts { get; set; } = true;
+    public bool UseLocalLlmForNames { get; set; }
+
+    // Eigene Listen der Praxis: immer ersetzen bzw. nie ersetzen
+    public List<string> ExtraNames { get; set; } = [];
+    public List<string> ExtraPlaces { get; set; } = [];
+    public List<string> IgnoredWords { get; set; } = [];
+
+    public List<UserRecord> Users { get; set; } = [];
+    public List<Announcement> Announcements { get; set; } = [];
+
+    public InstructionSettings Instructions { get; set; } = new();
+    public List<ProtectionRule> ProtectionRules { get; set; } = [];
+    public List<PromptTemplate> Templates { get; set; } = [];
+    public HistoryOptions History { get; set; } = new();
+}
+
+public sealed class Connection
+{
+    public string Id { get; set; } = NewId();
+    public string Name { get; set; } = "";
+
+    // Nur für die Anzeige, z.B. "claude", "openai", "ollama"
+    public string Preset { get; set; } = "custom";
+
+    // "OpenAI" (alles OpenAI kompatible), "Anthropic" oder "Echo"
+    public string Type { get; set; } = ConnectionTypes.OpenAI;
+    public string? BaseUrl { get; set; }
+
+    // Verschlüsselt mit ASP.NET Data Protection
+    public string? ApiKeyProtected { get; set; }
+    public string? ApiKeyHint { get; set; }
+
+    public string Model { get; set; } = "";
+    public string? Effort { get; set; }
+    public int TimeoutSeconds { get; set; } = 120;
+
+    // Wie "kreativ" das Modell antwortet. Niedrig (0.2 bis 0.4) ist ruhiger und bleibt eher bei der Sprache.
+    // Leer heißt: Standard des Anbieters. Wird bei Claude nicht verwendet.
+    public double? Temperature { get; set; }
+
+    // Läuft in der Praxis oder auf einem eigenen Server. Nur solche Verbindungen dürfen sensible Daten bekommen.
+    public bool OnPremise { get; set; }
+
+    public static string NewId() => Guid.NewGuid().ToString("N")[..10];
+}
+
+public static class ConnectionTypes
+{
+    public const string OpenAI = "OpenAI";
+    public const string Anthropic = "Anthropic";
+    public const string Echo = "Echo";
+
+    public static bool IsValid(string type) => type is OpenAI or Anthropic or Echo;
+}
+
+public sealed class UserRecord
+{
+    public string Id { get; set; } = Connection.NewId();
+    public string Name { get; set; } = "";
+    public string KeyHash { get; set; } = "";
+
+    // Die ersten Zeichen des Schlüssels, damit man ihn in der Liste wiedererkennt
+    public string KeyHint { get; set; } = "";
+    public bool Admin { get; set; }
+    public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
+
+    // Gesperrte Benutzer bleiben erhalten, kommen aber nicht mehr rein
+    public bool Active { get; set; } = true;
+
+    // Rechte und Anzeige, alles vom Server durchgesetzt
+    public bool ShowPreview { get; set; } = true;
+    public bool CanUseDocuments { get; set; } = true;
+    public bool CloudAllowed { get; set; } = true;
+
+    // Anfragen pro Tag, leer heißt unbegrenzt
+    public int? DailyLimit { get; set; }
+
+    public string? Note { get; set; }
+
+    // Zusätzliche Anweisung nur für diese Person, z.B. "Antworte immer mit Beispielen für den Empfang"
+    public string? Instructions { get; set; }
+
+    public List<string> DismissedAnnouncements { get; set; } = [];
+
+    // Anmeldung mit Benutzername und Passwort. Ohne Passwort geht nur der Zugangsschlüssel.
+    public string Username { get; set; } = "";
+    public string? PasswordHash { get; set; }
+    public bool MustChangePassword { get; set; }
+
+    // Ändert sich bei Passwortwechsel oder Sperre, dann sind alle alten Sitzungen sofort ungültig
+    public string SecurityStamp { get; set; } = Guid.NewGuid().ToString("N");
+
+    public void NewSecurityStamp() => SecurityStamp = Guid.NewGuid().ToString("N");
+}
+
+public enum AnnouncementLevel
+{
+    Info,
+    Warning,
+    Critical
+}
+
+public enum AnnouncementAudience
+{
+    All,
+    Admins,
+    Staff,
+    Selected
+}
+
+// Hinweis vom Admin an alle oder bestimmte Benutzer, z.B. "Bitte keine Befunde von Kindern hochladen"
+public sealed class Announcement
+{
+    public string Id { get; set; } = Connection.NewId();
+    public string Title { get; set; } = "";
+    public string Message { get; set; } = "";
+    public AnnouncementLevel Level { get; set; } = AnnouncementLevel.Info;
+    public AnnouncementAudience Audience { get; set; } = AnnouncementAudience.All;
+    public List<string> UserIds { get; set; } = [];
+    public DateTimeOffset? StartsAt { get; set; }
+    public DateTimeOffset? EndsAt { get; set; }
+    public bool Dismissible { get; set; } = true;
+    public bool Enabled { get; set; } = true;
+    public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
+    public string CreatedBy { get; set; } = "";
+
+    public bool IsVisibleTo(UserRecord user, DateTimeOffset now)
+    {
+        if (!Enabled || (StartsAt != null && now < StartsAt) || (EndsAt != null && now > EndsAt))
+            return false;
+
+        if (Dismissible && user.DismissedAnnouncements.Contains(Id))
+            return false;
+
+        return Audience switch
+        {
+            AnnouncementAudience.Admins => user.Admin,
+            AnnouncementAudience.Staff => !user.Admin,
+            AnnouncementAudience.Selected => UserIds.Contains(user.Id),
+            _ => true
+        };
+    }
+}
+
+public sealed class SettingsException(string message) : Exception(message);
+
+// Baustein für den Chat, z.B. "Arztbrief entwerfen"
+public enum TemplateMode
+{
+    // Text landet im Eingabefeld und kann noch bearbeitet werden
+    Insert,
+
+    // Wird direkt im Hintergrund an die KI geschickt, im Chat steht nur eine kurze Karte
+    Run
+}
+
+public sealed class PromptTemplate
+{
+    public string Id { get; set; } = Connection.NewId();
+    public string Title { get; set; } = "";
+
+    // Darf Variablen enthalten, z.B. {{Patient}} oder {{Absagetermin:termin}}
+    public string Text { get; set; } = "";
+    public TemplateMode Mode { get; set; } = TemplateMode.Insert;
+    public bool Enabled { get; set; } = true;
+}
+
+// Gespeicherte Unterhaltungen im Chat. Liegen verschlüsselt und nur für die Person selbst lesbar.
+public sealed class HistoryOptions
+{
+    public bool Enabled { get; set; } = true;
+
+    // So viele nicht angepinnte Unterhaltungen behält jede Person, ältere werden gelöscht
+    public int MaxConversations { get; set; } = 20;
+
+    // Nicht angepinnte Unterhaltungen werden nach so vielen Tagen ohne Änderung gelöscht
+    public int RetentionDays { get; set; } = 30;
+
+    // Angepinnte bleiben, bis man sie löst. Deshalb eine eigene Obergrenze.
+    public int MaxPinned { get; set; } = 10;
+}

@@ -1,0 +1,30 @@
+# Alles lokal: Gateway plus Ollama auf einem Rechner in der Praxis.
+# Das fertige Image kommt von GitHub. Wer selbst bauen will: docker compose up --build
+# Vor dem ersten Start einmal das Modell laden:
+#   docker compose exec ollama ollama pull llama3.1:8b
+services:
+  zwijg:
+    image: ghcr.io/kschnieders/zwijg:latest
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      Zwijg__Providers__Local__BaseUrl: http://ollama:11434/v1
+      Zwijg__Providers__Local__Model: llama3.1:8b
+      Zwijg__Routing__Mode: LocalOnly
+      Zwijg__ApiKeys__0__Key: ${ZWIJG_ADMIN_KEY:?ZWIJG_ADMIN_KEY fehlt}
+      Zwijg__ApiKeys__0__User: admin
+      Zwijg__ApiKeys__0__Admin: "true"
+    volumes:
+      - zwijg-data:/app/data
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama
+    volumes:
+      - ollama-data:/root/.ollama
+
+volumes:
+  zwijg-data:
+  ollama-data:

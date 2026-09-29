@@ -1,0 +1,49 @@
+Zwijg
+Copyright (C) 2026 Kay Schnieders
+https://github.com/kschnieders/zwijg
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version. See the file LICENSE.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+
+ADDITIONAL TERMS UNDER SECTION 7 OF THE GNU AGPL
+
+1. Author attribution (Section 7(b))
+
+   Any copy or modified version of this program that has a user interface
+   must keep an author attribution in its Appropriate Legal Notices,
+   which in Zwijg is the "Über Zwijg" dialog. The attribution names
+   Kay Schnieders as the original author and links to
+   https://github.com/kschnieders/zwijg
+
+   The attribution must stay easy to find in the user interface, as it is
+   in the original, and must not be removed, hidden or made unreadable.
+   Modified versions may add their own names next to it.
+
+2. Marking of modified versions (Section 7(c))
+
+   Modified versions must be clearly marked as modified and must not be
+   presented as the original version by Kay Schnieders.
+
+3. Third party software
+
+   Zwijg uses libraries from third parties under their own licenses.
+   See THIRD-PARTY-NOTICES.md.
+
+
+ZUSÄTZLICHE BEDINGUNGEN (deutsche Zusammenfassung, verbindlich ist der englische Text oben)
+
+1. Namensnennung: Wer Zwijg oder eine veränderte Fassung mit Oberfläche
+   nutzt oder weitergibt, muss im Fenster "Über Zwijg" Kay Schnieders
+   als ursprünglichen Autor nennen und auf das Repository verlinken.
+   Er muss in der Oberfläche leicht zu finden bleiben, so wie im Original.
+   Eigene Namen dürfen daneben ergänzt werden.
+
+2. Veränderte Fassungen müssen als verändert erkennbar sein und dürfen
+   nicht als Original von Kay Schnieders ausgegeben werden.

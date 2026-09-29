@@ -1,0 +1,76 @@
+name: Release
+
+# Wird von Hand gestartet: Actions, Release, Run workflow, Version eingeben
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, zum Beispiel 1.0.0"
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Version prüfen
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Die Version muss so aussehen: 1.0.0"
+            exit 1
+          fi
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Tests ausführen
+        run: dotnet test
+
+      # Fertiges Programm für Windows und Linux, ohne dass .NET installiert sein muss
+      - name: Programm bauen
+        run: |
+          for rid in win-x64 linux-x64; do
+            dotnet publish src/Zwijg.Gateway -c Release -r $rid --self-contained -p:Version=$VERSION -o out/$rid
+            # Versionsdatei und Update Skript, damit sich das Paket später selbst aktualisieren kann
+            echo "$VERSION" > out/$rid/VERSION
+          done
+          cp scripts/update.ps1 out/win-x64/
+          cp scripts/update.sh out/linux-x64/
+          chmod +x out/linux-x64/update.sh out/linux-x64/Zwijg.Gateway
+          for rid in win-x64 linux-x64; do
+            (cd out/$rid && zip -qr ../../zwijg-$VERSION-$rid.zip .)
+          done
+
+      # docker-compose.yml zum Starten ohne Quellcode. Zeigt auf latest, damit "docker compose pull" Updates holt.
+      - name: Docker Paket bauen
+        run: |
+          IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}
+          mkdir docker-paket
+          sed -e "/build: \./d" -e "s#image: .*zwijg:latest#image: $IMAGE:latest#" docker-compose.yml > docker-paket/docker-compose.yml
+          cp LICENSE NOTICE THIRD-PARTY-NOTICES.md docker-paket/
+          (cd docker-paket && zip -qr ../zwijg-$VERSION-docker.zip .)
+
+      - name: Docker Image veröffentlichen
+        run: |
+          IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker build --build-arg VERSION=$VERSION -t $IMAGE:$VERSION -t $IMAGE:latest .
+          docker push $IMAGE:$VERSION
+          docker push $IMAGE:latest
+
+      - name: Release anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" zwijg-$VERSION-*.zip \
+            --title "Zwijg $VERSION" \
+            --target "$GITHUB_SHA" \
+            --generate-notes

@@ -1,0 +1,1126 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zwijg</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%231f6f5c'/%3E%3Cpath d='M10 10h12L10 22h12' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script src="js/theme.js"></script>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- Icons, einmal definiert und per <use> eingebunden -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 8 2.5 8h-17S6 15 6 9M10 20.5a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a5 5 0 1 1 .9-9.9A6 6 0 0 1 19.5 10 4 4 0 0 1 18 18z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 8.7-8.7M16 6l2.5 2.5M14 8l2 2"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11A8 8 0 0 0 5.3 6.5L3 9M4 13a8 8 0 0 0 14.7 4.5L21 15M3 4v5h5M21 20v-5h-5"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24"><path d="M12 5h.01M12 12h.01M12 19h.01"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 4 4H6l4-4zM12 14v7"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></symbol>
+    <symbol id="i-steth" viewBox="0 0 24 24"><path d="M5 3v6a5 5 0 0 0 10 0V3M10 14v2a5 5 0 0 0 10 0v-2"/><circle cx="20" cy="12" r="2"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+  </defs>
+</svg>
+
+<!-- Anmeldung -->
+<div class="login" id="login" hidden>
+  <form class="login-card" id="loginForm">
+    <div class="brand brand-large">
+      <span class="logo"><svg viewBox="0 0 32 32"><path d="M10 10h12L10 22h12"/></svg></span>
+      <div>
+        <div class="brand-name">Zwijg</div>
+        <div class="brand-sub">Datenschutz für KI in der Arztpraxis</div>
+      </div>
+    </div>
+    <div id="loginPasswordFields">
+      <label class="field">
+        <span>Benutzername</span>
+        <input type="text" id="loginUser" autocomplete="username" spellcheck="false" autocapitalize="off" placeholder="z.B. empfang">
+      </label>
+      <label class="field">
+        <span>Passwort</span>
+        <input type="password" id="loginPassword" autocomplete="current-password">
+      </label>
+      <label class="switch login-remember"><input type="checkbox" id="loginRemember"><span class="track"></span><span>Angemeldet bleiben (14 Tage)</span></label>
+    </div>
+    <div id="loginKeyFields" hidden>
+      <label class="field">
+        <span>Persönlicher Zugangsschlüssel</span>
+        <input type="text" id="loginKey" autocomplete="off" spellcheck="false" placeholder="beginnt mit zw_">
+      </label>
+    </div>
+    <p class="error-text" id="loginError" hidden></p>
+    <button class="btn primary wide" type="submit">Anmelden</button>
+    <button class="link-btn" type="button" id="loginModeToggle">Stattdessen mit Zugangsschlüssel anmelden</button>
+    <ul class="login-points">
+      <li><svg class="ico"><use href="#i-shield"/></svg>Patientendaten werden vor dem Versand ersetzt</li>
+      <li><svg class="ico"><use href="#i-lock"/></svg>Sensible Anfragen bleiben in der Praxis</li>
+      <li><svg class="ico"><use href="#i-list"/></svg>Jede Anfrage wird nachvollziehbar protokolliert</li>
+    </ul>
+    <button class="link-btn about-link" type="button" id="loginAbout">Über Zwijg und Lizenzen</button>
+  </form>
+</div>
+
+<!-- App -->
+<div class="app" id="app" hidden>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo"><svg viewBox="0 0 32 32"><path d="M10 10h12L10 22h12"/></svg></span>
+      <div>
+        <div class="brand-name">Zwijg</div>
+        <div class="brand-sub">Datenschutz Gateway</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-label">Arbeiten</div>
+      <button data-view="chat"><svg class="ico"><use href="#i-chat"/></svg>Chat</button>
+      <button data-view="doc" id="navDoc"><svg class="ico"><use href="#i-doc"/></svg>Dokument</button>
+
+      <!-- Verlauf als eigener Abschnitt, Überschrift klappt auf und zu -->
+      <div class="conv-section" id="convSection" hidden>
+        <div class="conv-section-head">
+          <button class="conv-toggle" id="convToggle" aria-expanded="true" title="Verlauf ein oder ausblenden">
+            <span>Verlauf</span><svg class="ico"><use href="#i-down"/></svg>
+          </button>
+          <button class="conv-new-btn" id="convNew" title="Neue Unterhaltung" aria-label="Neue Unterhaltung"><svg class="ico"><use href="#i-plus"/></svg></button>
+        </div>
+        <div class="conv-list" id="convList"></div>
+      </div>
+      <div class="nav-label admin-only">Verwaltung</div>
+      <button data-view="dashboard" class="admin-only"><svg class="ico"><use href="#i-grid"/></svg>Übersicht</button>
+      <button data-view="connections" class="admin-only"><svg class="ico"><use href="#i-plug"/></svg>Verbindungen</button>
+      <button data-view="rules" class="admin-only"><svg class="ico"><use href="#i-shield"/></svg>Regeln</button>
+      <button data-view="users" class="admin-only"><svg class="ico"><use href="#i-users"/></svg>Benutzer</button>
+      <button data-view="notices" class="admin-only"><svg class="ico"><use href="#i-bell"/></svg>Benachrichtigungen<span class="nav-count" id="noticeCount" hidden></span></button>
+      <button data-view="audit" class="admin-only"><svg class="ico"><use href="#i-list"/></svg>Protokoll</button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="route-status" id="routeStatus"></div>
+      <div class="who" id="whoBox" title="Konto">
+        <span class="avatar" id="avatar">?</span>
+        <div class="who-text">
+          <div class="who-name" id="userName">...</div>
+          <div class="muted small" id="userRole"></div>
+        </div>
+        <button class="icon-btn" id="logout" title="Abmelden" aria-label="Abmelden"><svg class="ico"><use href="#i-logout"/></svg></button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
+    <div class="banners" id="banners"></div>
+
+    <!-- Chat -->
+    <section class="view" id="view-chat">
+      <header class="view-head">
+        <div>
+          <h1>Chat</h1>
+          <p class="muted">Patientendaten werden vor dem Versand ersetzt und in der Antwort wieder eingesetzt.</p>
+        </div>
+        <div class="head-actions">
+          <span class="usage" id="usage" hidden></span>
+          <button class="btn ghost" id="reset"><svg class="ico"><use href="#i-refresh"/></svg>Neue Unterhaltung</button>
+        </div>
+      </header>
+
+      <div class="chat-layout" id="chatLayout">
+        <div class="card chat-card">
+          <div class="chat" id="chat"></div>
+          <div class="composer">
+            <div class="template-bar" id="templateBar" hidden></div>
+            <div class="prompt-wrap">
+              <textarea id="prompt" rows="3" placeholder="Nachricht schreiben... (Strg+Enter zum Senden)"></textarea>
+              <button type="button" class="hide-selection" id="hideSelection" hidden title="Markierten Text vor der KI verstecken (Strg+Umschalt+H)">
+                <svg class="ico"><use href="#i-lock"/></svg>Verstecken
+              </button>
+            </div>
+            <div class="composer-bar">
+              <select id="route" title="Ziel">
+                <option value="">Ziel automatisch wählen</option>
+                <option value="local">Nur lokal</option>
+                <option value="cloud" id="routeCloud">Cloud, wenn erlaubt</option>
+              </select>
+              <span class="spacer"></span>
+              <button class="btn primary" id="send"><svg class="ico"><use href="#i-send"/></svg>Senden</button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="card preview-card" id="previewCard">
+          <div class="card-title"><svg class="ico"><use href="#i-eye"/></svg>Das sieht die KI</div>
+          <div class="pseudo" id="preview"><span class="muted">Beim Tippen erscheint hier die geschützte Fassung.</span></div>
+          <div class="chips" id="chips"></div>
+          <div class="secret-list" id="secretList" hidden></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Dokument -->
+    <section class="view" id="view-doc" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Dokument prüfen</h1>
+          <p class="muted">Erst prüfen, dann fragen. Zwijg zeigt vorher, was im Dokument gefunden und was ersetzt wird, noch bevor irgendetwas an die KI geht.</p>
+        </div>
+        <button class="btn ghost" id="docReset" hidden><svg class="ico"><use href="#i-refresh"/></svg>Anderes Dokument</button>
+      </header>
+
+      <div class="doc-layout" id="docLayout">
+        <div class="stack">
+          <div class="card" id="docUploadCard">
+            <label class="drop" id="drop">
+              <input type="file" id="docFile" accept=".pdf,.txt,application/pdf,text/plain" hidden>
+              <svg class="ico drop-ico"><use href="#i-upload"/></svg>
+              <strong id="dropText">Datei hierher ziehen oder klicken</strong>
+              <span class="muted small">PDF oder TXT, bis 20 MB. Wird sofort geprüft, noch ohne KI.</span>
+            </label>
+            <div id="docStatus"></div>
+          </div>
+
+          <div class="card" id="docReport" hidden>
+            <div class="card-title"><svg class="ico"><use href="#i-shield"/></svg>Prüfbericht</div>
+            <div id="docVerdict"></div>
+            <dl class="facts" id="docFacts"></dl>
+            <div class="chips" id="docChips"></div>
+            <details class="doc-hidden" id="docHidden" hidden>
+              <summary>Versteckten Text anzeigen</summary>
+              <p class="muted small">Dieser Text war im PDF unsichtbar (z.B. weiße oder winzige Schrift). Er wird nicht an die KI gegeben.</p>
+              <div class="text-block" id="docHiddenText"></div>
+            </details>
+          </div>
+
+          <div class="card" id="docAsk" hidden>
+            <div class="card-title"><svg class="ico"><use href="#i-chat"/></svg>Frage an die KI</div>
+            <div class="with-button">
+              <input type="text" id="docQuestion" value="Fasse das Dokument in drei Sätzen zusammen.">
+              <button class="btn primary" id="docSend"><svg class="ico"><use href="#i-send"/></svg>Fragen</button>
+            </div>
+            <div class="snippets doc-questions" id="docQuickQuestions"></div>
+            <div id="docResult"></div>
+          </div>
+        </div>
+
+        <div class="card doc-preview" id="docPreviewCard" hidden>
+          <div class="card-head">
+            <div class="card-title"><svg class="ico"><use href="#i-eye"/></svg>So sieht die KI das Dokument</div>
+            <button class="btn small ghost" id="docCopy"><svg class="ico"><use href="#i-copy"/></svg>Geschützte Fassung kopieren</button>
+          </div>
+          <div class="doc-text" id="docText"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Übersicht -->
+    <section class="view" id="view-dashboard" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Übersicht</h1>
+          <p class="muted">Wie Zwijg in eurer Praxis genutzt wird.</p>
+        </div>
+        <button class="btn ghost" id="dashRefresh"><svg class="ico"><use href="#i-refresh"/></svg>Aktualisieren</button>
+      </header>
+      <div class="tiles" id="tiles"></div>
+      <div class="dash-grid">
+        <div class="card chart-card">
+          <div class="card-head">
+            <div class="card-title">Anfragen der letzten 14 Tage</div>
+            <div class="legend" id="legend"></div>
+          </div>
+          <div class="chart-wrap" id="chart"></div>
+          <details class="chart-table">
+            <summary>Als Tabelle anzeigen</summary>
+            <div class="table-wrap" id="chartTable"></div>
+          </details>
+        </div>
+        <div class="card">
+          <div class="card-title">Status</div>
+          <div id="dashStatus"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Auffälligkeiten</div>
+          <div id="dashEvents"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Aktivste Benutzer (7 Tage)</div>
+          <div id="dashUsers"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Verbindungen -->
+    <section class="view" id="view-connections" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Verbindungen</h1>
+          <p class="muted">Welche KI Zwijg nutzen darf. Lokale Modelle bekommen sensible Anfragen, die Cloud nur unkritische.</p>
+        </div>
+        <button class="btn primary" id="addConnection"><svg class="ico"><use href="#i-plus"/></svg>Neue Verbindung</button>
+      </header>
+
+      <div class="card">
+        <div class="card-title">Zuordnung</div>
+        <div class="assign">
+          <label class="field">
+            <span><svg class="ico inline"><use href="#i-lock"/></svg>Für sensible Daten (lokal)</span>
+            <select id="assignLocal"></select>
+            <small class="muted">Nur Verbindungen, die in der Praxis oder auf eigenem Server laufen.</small>
+          </label>
+          <label class="field">
+            <span><svg class="ico inline"><use href="#i-cloud"/></svg>Für unkritische Daten (Cloud)</span>
+            <select id="assignCloud"></select>
+            <small class="muted">Bekommt nur Anfragen, die laut Regeln raus dürfen. Immer pseudonymisiert.</small>
+          </label>
+        </div>
+        <div class="actions"><button class="btn" id="saveRoutes">Zuordnung speichern</button></div>
+      </div>
+
+      <div class="conn-list" id="connList"></div>
+    </section>
+
+    <!-- Regeln -->
+    <section class="view" id="view-rules" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Regeln</h1>
+          <p class="muted">Wie die KI antwortet, was geschützt wird und wohin Anfragen gehen dürfen.</p>
+        </div>
+      </header>
+
+      <div class="tabs" id="ruleTabs" role="tablist">
+        <button data-tab="instructions" class="on"><svg class="ico"><use href="#i-chat"/></svg>Anweisungen</button>
+        <button data-tab="protect"><svg class="ico"><use href="#i-shield"/></svg>Schutzregeln<span class="tab-count" id="ruleCount"></span></button>
+        <button data-tab="templates"><svg class="ico"><use href="#i-doc"/></svg>Vorlagen<span class="tab-count" id="templateCount"></span></button>
+        <button data-tab="routing"><svg class="ico"><use href="#i-cloud"/></svg>Weiterleitung</button>
+        <button data-tab="detect"><svg class="ico"><use href="#i-search"/></svg>Erkennung</button>
+        <button data-tab="history"><svg class="ico"><use href="#i-clock"/></svg>Verlauf</button>
+      </div>
+
+      <!-- Anweisungen -->
+      <div class="rule-pane" data-pane="instructions">
+        <div class="pane-grid">
+          <div class="stack">
+            <div class="card">
+              <div class="card-head">
+                <div class="card-title">Antwortstil</div>
+                <label class="switch compact-switch"><input type="checkbox" id="iEnabled"><span class="track"></span><span>Aktiv</span></label>
+              </div>
+              <p class="muted small" style="margin-bottom: 16px">Gilt für jede Anfrage, egal welches Modell antwortet.</p>
+              <div class="style-grid" id="styleGrid">
+                <label class="field"><span>Sprache</span>
+                  <select id="iLanguage"><option value="de">Deutsch</option><option value="auto">Wie die Frage</option><option value="en">Englisch</option></select></label>
+                <label class="field"><span>Anrede</span>
+                  <select id="iAddressing"><option value="sie">Sie</option><option value="du">Du</option><option value="none">Keine Vorgabe</option></select></label>
+                <label class="field" title="Praxisteam: Fachsprache ist in Ordnung. Patienten: einfache Sprache, Fachbegriffe werden erklärt."><span>Zielgruppe</span>
+                  <select id="iAudience"><option value="staff">Praxisteam</option><option value="patients">Patienten</option><option value="none">Keine Vorgabe</option></select></label>
+                <label class="field"><span>Ton</span>
+                  <select id="iTone"><option value="neutral">Sachlich</option><option value="friendly">Freundlich</option><option value="concise">Kurz und knapp</option></select></label>
+                <label class="field"><span>Länge</span>
+                  <select id="iLength"><option value="short">Kurz</option><option value="normal">Normal</option><option value="long">Ausführlich</option></select></label>
+                <label class="field"><span>Format</span>
+                  <select id="iFormat"><option value="auto">Automatisch</option><option value="bullets">Stichpunkte</option><option value="prose">Fließtext</option></select></label>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Eigene Anweisungen</div>
+              <textarea id="iCustom" rows="7" maxlength="4000" placeholder="z.B. Stelle keine Diagnosen, sondern gib Hinweise, was ärztlich abgeklärt werden sollte."></textarea>
+              <div class="textarea-foot">
+                <span class="muted small">Hier keine Patientendaten eintragen. Der Text geht an jedes Modell, auch in die Cloud.</span>
+                <span class="muted small" id="iCustomCount"></span>
+              </div>
+              <div class="snippet-label">Bausteine zum Einfügen</div>
+              <div class="snippets" id="iSnippets"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Hinweis unter jeder Antwort</div>
+              <input type="text" id="iFooter" maxlength="500" placeholder="z.B. KI Antwort, bitte vor Verwendung fachlich prüfen.">
+              <p class="muted small" style="margin-top: 8px">Wird unter jede Antwort gesetzt. Leer lassen für keinen Hinweis.</p>
+            </div>
+          </div>
+
+          <div class="card preview-sticky">
+            <div class="card-title"><svg class="ico"><use href="#i-eye"/></svg>Das bekommt die KI</div>
+            <div class="instruction-preview" id="iPreview"></div>
+            <p class="muted small" style="margin-top: 12px">Tipp: Mit der Echo Verbindung im Chat <code>/system</code> schreiben, dann siehst du genau, was ankommt. Persönliche Anweisungen legst du unter Benutzer fest.</p>
+          </div>
+        </div>
+        <div class="actions sticky-actions"><button class="btn primary" id="iSave"><svg class="ico"><use href="#i-check"/></svg>Anweisungen speichern</button></div>
+      </div>
+
+      <!-- Schutzregeln -->
+      <div class="rule-pane" data-pane="protect" hidden>
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Eigene Schutzregeln</div>
+              <p class="muted small">Zusätzlich zur automatischen Erkennung. Gut für interne Nummern, Kürzel oder Themen, die nie in die Cloud sollen.</p>
+            </div>
+            <button class="btn primary" id="addRule"><svg class="ico"><use href="#i-plus"/></svg>Neue Regel</button>
+          </div>
+          <div class="rule-list" id="ruleList"></div>
+          <div class="snippet-label">Beispiele übernehmen</div>
+          <div class="snippets" id="ruleExamples"></div>
+        </div>
+      </div>
+
+      <!-- Vorlagen -->
+      <div class="rule-pane" data-pane="templates" hidden>
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Vorlagen für den Chat</div>
+              <p class="muted small">Erscheinen im Chat als Knöpfe über dem Eingabefeld. Ein Klick setzt den Text ein, danach wird nur noch ergänzt.</p>
+            </div>
+            <button class="btn primary" id="addTemplate"><svg class="ico"><use href="#i-plus"/></svg>Neue Vorlage</button>
+          </div>
+          <div class="rule-list" id="templateList"></div>
+          <div class="snippet-label">Beispiele übernehmen</div>
+          <div class="snippets" id="templateExamples"></div>
+        </div>
+      </div>
+
+      <!-- Weiterleitung -->
+      <div class="rule-pane stack" data-pane="routing" hidden>
+        <div class="card">
+          <div class="card-title">Wohin gehen Anfragen?</div>
+          <div class="choice-grid">
+            <label class="choice"><input type="radio" name="mode" value="Auto">
+              <strong>Automatisch</strong><span>Sensible Anfragen lokal, der Rest in die Cloud.</span></label>
+            <label class="choice"><input type="radio" name="mode" value="LocalOnly">
+              <strong>Nur lokal</strong><span>Nichts verlässt die Praxis. Am sichersten.</span></label>
+            <label class="choice"><input type="radio" name="mode" value="CloudOnly">
+              <strong>Nur Cloud</strong><span>Alles pseudonymisiert in die Cloud. Nur wenn es kein lokales Modell gibt.</span></label>
+          </div>
+          <label class="field">
+            <span>Was darf höchstens in die Cloud?</span>
+            <select id="cloudMax">
+              <option value="None">Nur Anfragen ganz ohne erkannte Personendaten</option>
+              <option value="Low">Auch mit Datum, Ort oder allgemeinen Gesundheitsfragen</option>
+              <option value="Medium">Auch mit Namen, Telefon oder E-Mail (pseudonymisiert)</option>
+              <option value="High">Alles, auch Person mit Gesundheitsdaten (pseudonymisiert)</option>
+            </select>
+          </label>
+          <label class="switch"><input type="checkbox" id="docsLocal"><span class="track"></span><span>Hochgeladene Dokumente immer lokal verarbeiten</span></label>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Schutz vor Manipulation</div>
+          <div class="choice-grid two">
+            <label class="choice"><input type="radio" name="injAction" value="Block">
+              <strong>Blockieren</strong><span>Verdächtige Anfragen werden gestoppt und protokolliert.</span></label>
+            <label class="choice"><input type="radio" name="injAction" value="Warn">
+              <strong>Nur warnen</strong><span>Anfrage geht durch, im Protokoll steht eine Warnung.</span></label>
+          </div>
+          <div class="assign">
+            <label class="field">
+              <span>Schwelle für Chat Nachrichten</span>
+              <input type="number" id="promptThreshold" min="1" max="1000">
+              <small class="muted">Niedriger heißt strenger. Standard 60.</small>
+            </label>
+            <label class="field">
+              <span>Schwelle für Dokumente</span>
+              <input type="number" id="docThreshold" min="1" max="1000">
+              <small class="muted">Dokumente sollten keine Anweisungen enthalten. Standard 30.</small>
+            </label>
+          </div>
+        </div>
+        <div class="actions sticky-actions"><button class="btn primary" data-save-policy><svg class="ico"><use href="#i-check"/></svg>Speichern</button></div>
+      </div>
+
+      <!-- Erkennung -->
+      <div class="rule-pane stack" data-pane="detect" hidden>
+        <div class="card">
+          <div class="card-title">Protokoll und Erkennung</div>
+          <label class="switch"><input type="checkbox" id="storePrompts"><span class="track"></span><span>Pseudonymisierte Fragen im Protokoll speichern</span></label>
+          <label class="switch"><input type="checkbox" id="llmNames"><span class="track"></span><span>Lokales Modell zusätzlich nach Namen und Orten suchen lassen (etwas langsamer, findet deutlich mehr)</span></label>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Eigene Listen</div>
+          <p class="muted small" style="margin-bottom: 14px">Ein Eintrag pro Zeile. Groß und Kleinschreibung ist egal.</p>
+          <div class="lists-grid">
+            <label class="field">
+              <span>Namen, die immer ersetzt werden</span>
+              <textarea id="extraNames" rows="7" placeholder="Dr. Oltmanns&#10;Hilde Zwartjes&#10;Schwester Anke"></textarea>
+              <small class="muted">Z.B. Ärzte, Mitarbeiter oder seltene Nachnamen aus eurer Gegend.</small>
+            </label>
+            <label class="field">
+              <span>Orte, die immer ersetzt werden</span>
+              <textarea id="extraPlaces" rows="7" placeholder="Gildehaus&#10;Bentheimer Straße"></textarea>
+              <small class="muted">Z.B. Ortsteile, Dörfer und Straßen in der Umgebung.</small>
+            </label>
+            <label class="field">
+              <span>Wörter, die nie ersetzt werden</span>
+              <textarea id="ignoredWords" rows="7" placeholder="Parkinson"></textarea>
+              <small class="muted">Falls etwas fälschlich als Name erkannt wird.</small>
+            </label>
+          </div>
+        </div>
+        <div class="actions sticky-actions"><button class="btn primary" data-save-policy><svg class="ico"><use href="#i-check"/></svg>Speichern</button></div>
+      </div>
+
+      <!-- Verlauf -->
+      <div class="rule-pane stack" data-pane="history" hidden>
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Gespeicherte Unterhaltungen</div>
+              <p class="muted small">Damit jede Person ihre letzten Chats wiederfindet. Die Inhalte liegen verschlüsselt und sind nur für die Person selbst lesbar, auch Admins sehen sie nicht.</p>
+            </div>
+            <label class="switch compact-switch"><input type="checkbox" id="hEnabled"><span class="track"></span><span>Aktiv</span></label>
+          </div>
+          <div class="style-grid" id="hGrid">
+            <label class="field">
+              <span>Unterhaltungen pro Person</span>
+              <input type="number" id="hMax" min="1" max="500">
+              <small class="muted">Ältere werden automatisch gelöscht.</small>
+            </label>
+            <label class="field">
+              <span>Aufbewahren für Tage</span>
+              <input type="number" id="hDays" min="1" max="3650">
+              <small class="muted">Gezählt ab der letzten Nachricht.</small>
+            </label>
+            <label class="field">
+              <span>Anpinnen höchstens</span>
+              <input type="number" id="hPinned" min="0" max="100">
+              <small class="muted">Angepinnte bleiben, bis man sie löst.</small>
+            </label>
+          </div>
+          <div class="history-stats" id="hStats"></div>
+        </div>
+
+        <div class="card danger-zone">
+          <div class="card-title">Alles löschen</div>
+          <p class="muted small" style="margin-bottom: 12px">Löscht die gespeicherten Unterhaltungen aller Benutzer, auch angepinnte. Das Protokoll bleibt davon unberührt.</p>
+          <button class="btn danger" id="hDeleteAll"><svg class="ico"><use href="#i-trash"/></svg>Alle Verläufe löschen</button>
+        </div>
+        <div class="actions sticky-actions"><button class="btn primary" id="hSave"><svg class="ico"><use href="#i-check"/></svg>Speichern</button></div>
+      </div>
+    </section>
+
+    <!-- Benutzer -->
+    <section class="view" id="view-users" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Benutzer</h1>
+          <p class="muted">Jede Person bekommt einen eigenen Schlüssel und eigene Rechte. So steht im Protokoll, wer gefragt hat.</p>
+        </div>
+        <button class="btn primary" id="addUser"><svg class="ico"><use href="#i-plus"/></svg>Benutzer anlegen</button>
+      </header>
+      <div class="card">
+        <div class="toolbar">
+          <label class="search"><svg class="ico"><use href="#i-search"/></svg><input type="text" id="userSearch" placeholder="Suchen..."></label>
+          <div class="segmented" id="userFilter">
+            <button data-f="all" class="on">Alle</button>
+            <button data-f="active">Aktiv</button>
+            <button data-f="locked">Gesperrt</button>
+            <button data-f="admin">Admins</button>
+          </div>
+          <span class="spacer"></span>
+          <span class="muted small" id="userCount"></span>
+        </div>
+        <div class="table-wrap" id="userTable"></div>
+      </div>
+    </section>
+
+    <!-- Benachrichtigungen -->
+    <section class="view" id="view-notices" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Benachrichtigungen</h1>
+          <p class="muted">Hinweise an das Team, z.B. "Bitte keine Befunde von Kindern hochladen". Sie erscheinen oben in der App.</p>
+        </div>
+        <button class="btn primary" id="addNotice"><svg class="ico"><use href="#i-plus"/></svg>Neue Benachrichtigung</button>
+      </header>
+      <div class="notice-list" id="noticeList"></div>
+    </section>
+
+    <!-- Protokoll -->
+    <section class="view" id="view-audit" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Protokoll</h1>
+          <p class="muted">Wer hat wann was gefragt. Gespeichert wird nur die pseudonymisierte Fassung.</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" id="auditVerify"><svg class="ico"><use href="#i-shield"/></svg>Echtheit prüfen</button>
+          <button class="btn ghost" id="auditCsv"><svg class="ico"><use href="#i-download"/></svg>CSV Export</button>
+        </div>
+      </header>
+      <div class="card audit-card">
+        <div class="audit-filters">
+          <div class="filter-row">
+            <label class="search grow">
+              <svg class="ico"><use href="#i-search"/></svg>
+              <input type="text" id="auditSearch" placeholder="Volltext durchsuchen, z.B. Blutdruck, NAME_1, jailbreak oder #42">
+              <button type="button" class="icon-btn small-x" id="auditSearchClear" hidden aria-label="Suche leeren"><svg class="ico"><use href="#i-x"/></svg></button>
+            </label>
+            <div class="segmented" id="auditRange">
+              <button data-r="today">Heute</button>
+              <button data-r="7" class="on">7 Tage</button>
+              <button data-r="30">30 Tage</button>
+              <button data-r="all">Alle</button>
+              <button data-r="custom">Zeitraum</button>
+            </div>
+          </div>
+          <div class="filter-row" id="auditCustomRange" hidden>
+            <label class="inline-field"><span>von</span><input type="date" id="auditFrom"></label>
+            <label class="inline-field"><span>bis</span><input type="date" id="auditTo"></label>
+          </div>
+          <div class="filter-row">
+            <label class="select-field"><span>Benutzer</span><select id="auditUser"><option value="">Alle</option></select></label>
+            <label class="select-field"><span>Art</span>
+              <select id="auditAction">
+                <option value="">Alle</option>
+                <option value="chat">Chat</option>
+                <option value="document">Dokument</option>
+                <option value="admin">Verwaltung</option>
+                <option value="login">Anmeldung</option>
+              </select>
+            </label>
+            <label class="select-field"><span>Status</span>
+              <select id="auditStatus">
+                <option value="">Alle</option>
+                <option value="Ok">Erfolgreich</option>
+                <option value="Blocked">Blockiert</option>
+                <option value="Warning">Warnung</option>
+                <option value="Error">Fehler</option>
+              </select>
+            </label>
+            <label class="select-field"><span>Ziel</span>
+              <select id="auditRoute">
+                <option value="">Alle</option>
+                <option value="Local">Lokal</option>
+                <option value="Cloud">Cloud</option>
+              </select>
+            </label>
+            <span class="spacer"></span>
+            <button class="btn ghost small" id="auditReset" hidden><svg class="ico"><use href="#i-x"/></svg>Filter zurücksetzen</button>
+            <button class="icon-btn" id="auditLoad" title="Aktualisieren" aria-label="Aktualisieren"><svg class="ico"><use href="#i-refresh"/></svg></button>
+          </div>
+        </div>
+        <div class="audit-summary">
+          <span id="auditCount" class="muted"></span>
+          <span class="spacer"></span>
+          <span id="verifyResult"></span>
+        </div>
+        <div class="table-wrap" id="auditTable"></div>
+        <div class="pager" id="auditPager"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Dialog: Verbindung -->
+<dialog id="connDialog" class="dialog">
+  <form method="dialog" id="connForm">
+    <header class="dialog-head">
+      <h2 id="connDialogTitle">Neue Verbindung</h2>
+      <button class="icon-btn" value="cancel" formnovalidate aria-label="Schließen"><svg class="ico"><use href="#i-x"/></svg></button>
+    </header>
+
+    <div id="presetStep">
+      <p class="muted">Welche KI möchtest du verbinden?</p>
+      <div class="preset-grid" id="presetGrid"></div>
+    </div>
+
+    <div id="formStep" hidden>
+      <div class="preset-note" id="presetNote"></div>
+      <div class="form-grid">
+        <label class="field"><span>Name</span><input type="text" id="cName" required></label>
+        <label class="field" id="cUrlField"><span>Adresse (Base URL)</span><input type="url" id="cUrl" placeholder="http://server:11434/v1"></label>
+        <label class="field" id="cKeyField">
+          <span>API Schlüssel</span>
+          <input type="password" id="cKey" autocomplete="new-password" placeholder="sk-...">
+          <small class="muted" id="cKeyHint"></small>
+        </label>
+        <label class="field">
+          <span>Modell</span>
+          <div class="with-button">
+            <input type="text" id="cModel" list="cModelList" placeholder="z.B. qwen2.5:7b">
+            <button class="btn ghost" type="button" id="cLoadModels">Modelle laden</button>
+          </div>
+          <datalist id="cModelList"></datalist>
+          <small class="muted" id="cModelsInfo"></small>
+        </label>
+        <label class="field" id="cEffortField">
+          <span>Denktiefe (Effort)</span>
+          <select id="cEffort">
+            <option value="low">Niedrig, schnell und günstig</option>
+            <option value="medium" selected>Mittel</option>
+            <option value="high">Hoch</option>
+            <option value="max">Maximal</option>
+          </select>
+        </label>
+        <label class="field"><span>Timeout in Sekunden</span><input type="number" id="cTimeout" min="5" max="1800" value="120"></label>
+        <label class="field" id="cTempField">
+          <span>Temperatur</span>
+          <input type="number" id="cTemp" min="0" max="2" step="0.1" placeholder="Standard des Anbieters">
+          <small class="muted">Niedrig (0.2 bis 0.4) antwortet ruhiger und bleibt eher bei Deutsch. Leer lassen für den Standard.</small>
+        </label>
+      </div>
+      <label class="switch" id="cOnPremField">
+        <input type="checkbox" id="cOnPrem"><span class="track"></span>
+        <span>Läuft in der Praxis oder auf eigenem Server. Darf sensible Daten bekommen.</span>
+      </label>
+      <div id="cTestResult"></div>
+      <footer class="dialog-foot">
+        <button class="btn ghost" type="button" id="cBack">Zurück</button>
+        <span class="spacer"></span>
+        <button class="btn" type="button" id="cTest">Verbindung testen</button>
+        <button class="btn primary" type="button" id="cSave">Speichern</button>
+      </footer>
+    </div>
+  </form>
+</dialog>
+
+<!-- Dialog: Benutzer -->
+<dialog id="userDialog" class="dialog">
+  <form method="dialog" id="userForm">
+    <header class="dialog-head">
+      <h2 id="userDialogTitle">Benutzer anlegen</h2>
+      <button class="icon-btn" value="cancel" formnovalidate aria-label="Schließen"><svg class="ico"><use href="#i-x"/></svg></button>
+    </header>
+    <div class="form-grid">
+      <label class="field"><span>Name</span><input type="text" id="uName" placeholder="z.B. Empfang oder Dr. Weber" required></label>
+      <label class="field">
+        <span>Benutzername für die Anmeldung</span>
+        <input type="text" id="uUsername" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="wird aus dem Namen gebildet">
+      </label>
+    </div>
+
+    <div class="pw-box">
+      <div class="pw-box-head">
+        <strong>Passwort</strong>
+        <span class="badge neutral" id="uPwState">noch keins</span>
+      </div>
+      <div class="with-button">
+        <input type="text" id="uPassword" autocomplete="off" spellcheck="false" placeholder="leer lassen, um nichts zu ändern">
+        <button class="btn ghost" type="button" id="uPwGenerate">Vorschlagen</button>
+      </div>
+      <label class="switch"><input type="checkbox" id="uMustChange"><span class="track"></span>
+        <span>Beim ersten Anmelden ändern<small>Empfohlen: dann kennt nur die Person selbst ihr Passwort.</small></span></label>
+    </div>
+
+    <div class="form-grid">
+      <label class="field">
+        <span>Tageslimit</span>
+        <input type="number" id="uLimit" min="1" placeholder="unbegrenzt">
+        <small class="muted">Anfragen pro Tag. Leer lassen für unbegrenzt.</small>
+      </label>
+      <div></div>
+    </div>
+    <label class="field"><span>Notiz</span><input type="text" id="uNote" placeholder="z.B. Aushilfe bis Ende Oktober"></label>
+    <label class="field">
+      <span>Persönliche Anweisung an die KI</span>
+      <textarea id="uInstructions" rows="2" maxlength="1000" placeholder="z.B. Antworte mir immer mit einem Formulierungsvorschlag für Patienten."></textarea>
+      <small class="muted">Kommt zusätzlich zu den Anweisungen unter Regeln, nur für diese Person.</small>
+    </label>
+
+    <div class="perm-list">
+      <label class="switch"><input type="checkbox" id="uAdmin"><span class="track"></span>
+        <span><strong>Admin</strong><small>Darf Verbindungen, Regeln, Benutzer und Protokoll verwalten.</small></span></label>
+      <label class="switch"><input type="checkbox" id="uPreview"><span class="track"></span>
+        <span><strong>"Das sieht die KI" anzeigen</strong><small>Zeigt beim Schreiben die geschützte Fassung neben dem Chat.</small></span></label>
+      <label class="switch"><input type="checkbox" id="uDocs"><span class="track"></span>
+        <span><strong>Dokumente hochladen</strong><small>PDFs und Textdateien prüfen und befragen.</small></span></label>
+      <label class="switch"><input type="checkbox" id="uCloud"><span class="track"></span>
+        <span><strong>Cloud erlaubt</strong><small>Aus heißt: alle Anfragen dieser Person bleiben lokal, egal was die Regeln sagen.</small></span></label>
+      <label class="switch" id="uActiveRow"><input type="checkbox" id="uActive"><span class="track"></span>
+        <span><strong>Zugang aktiv</strong><small>Aus heißt gesperrt. Der Benutzer bleibt erhalten, kommt aber nicht mehr rein.</small></span></label>
+    </div>
+    <p class="error-text" id="uError" hidden></p>
+    <footer class="dialog-foot">
+      <span class="spacer"></span>
+      <button class="btn ghost" value="cancel" formnovalidate>Abbrechen</button>
+      <button class="btn primary" type="button" id="uSave">Speichern</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Dialog: Benachrichtigung -->
+<dialog id="noticeDialog" class="dialog">
+  <form method="dialog" id="noticeForm">
+    <header class="dialog-head">
+      <h2 id="noticeDialogTitle">Neue Benachrichtigung</h2>
+      <button class="icon-btn" value="cancel" formnovalidate aria-label="Schließen"><svg class="ico"><use href="#i-x"/></svg></button>
+    </header>
+    <label class="field"><span>Titel</span><input type="text" id="nTitle" maxlength="200" placeholder="z.B. Bitte beachten"></label>
+    <label class="field"><span>Text</span><textarea id="nMessage" rows="3" maxlength="2000" placeholder="z.B. Bitte keine Befunde von Kindern in die Cloud geben."></textarea></label>
+
+    <div class="field">
+      <span>Stufe</span>
+      <div class="segmented level-pick" id="nLevel">
+        <button type="button" data-l="Info"><svg class="ico"><use href="#i-info"/></svg>Info</button>
+        <button type="button" data-l="Warning"><svg class="ico"><use href="#i-alert"/></svg>Hinweis</button>
+        <button type="button" data-l="Critical"><svg class="ico"><use href="#i-alert"/></svg>Wichtig</button>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <label class="field">
+        <span>Für wen?</span>
+        <select id="nAudience">
+          <option value="All">Alle</option>
+          <option value="Staff">Nur Mitarbeiter</option>
+          <option value="Admins">Nur Admins</option>
+          <option value="Selected">Bestimmte Personen</option>
+        </select>
+      </label>
+      <div></div>
+      <label class="field"><span>Anzeigen ab</span><input type="datetime-local" id="nStart"><small class="muted">Leer heißt sofort.</small></label>
+      <label class="field"><span>Anzeigen bis</span><input type="datetime-local" id="nEnd"><small class="muted">Leer heißt ohne Ende.</small></label>
+    </div>
+    <div class="user-picks" id="nUsers" hidden></div>
+
+    <label class="switch"><input type="checkbox" id="nDismissible"><span class="track"></span><span>Darf weggeklickt werden</span></label>
+    <label class="switch"><input type="checkbox" id="nEnabled"><span class="track"></span><span>Aktiv</span></label>
+
+    <div class="field">
+      <span>Vorschau</span>
+      <div id="nPreview"></div>
+    </div>
+    <p class="error-text" id="nError" hidden></p>
+    <footer class="dialog-foot">
+      <span class="spacer"></span>
+      <button class="btn ghost" value="cancel" formnovalidate>Abbrechen</button>
+      <button class="btn primary" type="button" id="nSave">Speichern</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Dialog: Schutzregel -->
+<dialog id="ruleDialog" class="dialog">
+  <form method="dialog" id="ruleForm">
+    <header class="dialog-head">
+      <h2 id="ruleDialogTitle">Neue Schutzregel</h2>
+      <button class="icon-btn" value="cancel" formnovalidate aria-label="Schließen"><svg class="ico"><use href="#i-x"/></svg></button>
+    </header>
+    <label class="field"><span>Name</span><input type="text" id="rName" maxlength="80" placeholder="z.B. Interne Patientennummer"></label>
+
+    <div class="field">
+      <span>Was soll passieren?</span>
+      <div class="action-grid" id="rAction">
+        <button type="button" data-a="Replace"><strong>Ersetzen</strong><small>Durch Platzhalter ersetzen, in der Antwort wieder einsetzen</small></button>
+        <button type="button" data-a="LocalOnly"><strong>Nur lokal</strong><small>Anfrage bleibt in der Praxis, nie in die Cloud</small></button>
+        <button type="button" data-a="Block"><strong>Blockieren</strong><small>Anfrage wird nicht verschickt</small></button>
+        <button type="button" data-a="Warn"><strong>Nur protokollieren</strong><small>Geht durch, im Protokoll steht eine Warnung</small></button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span>Wonach suchen?</span>
+      <div class="segmented" id="rMode">
+        <button type="button" data-m="words">Wörter</button>
+        <button type="button" data-m="regex">Muster (regulärer Ausdruck)</button>
+      </div>
+    </div>
+    <label class="field">
+      <textarea id="rPatterns" rows="4" spellcheck="false" placeholder="Ein Begriff pro Zeile"></textarea>
+      <small class="muted" id="rPatternHint"></small>
+    </label>
+    <label class="switch"><input type="checkbox" id="rCase"><span class="track"></span><span>Groß und Kleinschreibung beachten</span></label>
+
+    <div class="form-grid">
+      <label class="field" id="rLabelField">
+        <span>Name des Platzhalters</span>
+        <input type="text" id="rLabel" maxlength="20" placeholder="z.B. PATIENTENNR">
+        <small class="muted" id="rLabelPreview"></small>
+      </label>
+      <label class="field" id="rMessageField">
+        <span>Meldung an den Benutzer</span>
+        <input type="text" id="rMessage" maxlength="200" placeholder="z.B. Bitte keine Zugangsdaten eingeben.">
+      </label>
+    </div>
+
+    <div class="field">
+      <span>Ausprobieren</span>
+      <textarea id="rTest" rows="2" placeholder="Beispieltext eingeben, Treffer werden markiert"></textarea>
+      <div class="rule-test" id="rTestResult"></div>
+    </div>
+
+    <label class="switch"><input type="checkbox" id="rEnabled"><span class="track"></span><span>Aktiv</span></label>
+    <p class="error-text" id="rError" hidden></p>
+    <footer class="dialog-foot">
+      <span class="spacer"></span>
+      <button class="btn ghost" value="cancel" formnovalidate>Abbrechen</button>
+      <button class="btn primary" type="button" id="rSave">Speichern</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Dialog: Vorlage -->
+<dialog id="templateDialog" class="dialog">
+  <form method="dialog" id="templateForm">
+    <header class="dialog-head">
+      <h2 id="templateDialogTitle">Neue Vorlage</h2>
+      <button class="icon-btn" value="cancel" formnovalidate aria-label="Schließen"><svg class="ico"><use href="#i-x"/></svg></button>
+    </header>
+    <label class="field"><span>Titel (so heißt der Knopf im Chat)</span><input type="text" id="tTitle" maxlength="60" placeholder="z.B. Patientenabsage"></label>
+
+    <div class="field">
+      <span>Was passiert beim Klick?</span>
+      <div class="action-grid two-col" id="tMode">
+        <button type="button" data-m="Run"><strong>Direkt ausführen</strong><small>Formular ausfüllen, die Anweisung geht im Hintergrund an die KI. Im Chat steht nur eine kurze Karte.</small></button>
+        <button type="button" data-m="Insert"><strong>Ins Eingabefeld einfügen</strong><small>Der Text landet im Eingabefeld und kann vor dem Senden noch ergänzt werden.</small></button>
+      </div>
+    </div>
+
+    <label class="field">
+      <span>Anweisung an die KI</span>
+      <textarea id="tText" rows="7" maxlength="4000" spellcheck="false" placeholder="z.B. Schreibe eine freundliche Nachricht an {{Patient}}, dass der Termin am {{Absagetermin:termin}} ausfällt."></textarea>
+    </label>
+    <div class="var-tools">
+      <span class="muted small">Feld einfügen:</span>
+      <div class="snippets" id="tVarButtons"></div>
+    </div>
+    <div class="var-found" id="tVars"></div>
+
+    <label class="switch"><input type="checkbox" id="tEnabled"><span class="track"></span><span>Im Chat anzeigen</span></label>
+    <p class="error-text" id="tError" hidden></p>
+    <footer class="dialog-foot">
+      <span class="spacer"></span>
+      <button class="btn ghost" value="cancel" formnovalidate>Abbrechen</button>
+      <button class="btn primary" type="button" id="tSave">Speichern</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Dialog: Vorlage im Chat ausfüllen -->
+<dialog id="runDialog" class="dialog">
+  <form method="dialog" id="runForm">
+    <header class="dialog-head">
+      <div>
+        <div class="muted small" id="runKind">Vorlage</div>
+        <h2 id="runTitle">Vorlage</h2>
+      </div>
+      <button class="icon-btn" value="cancel" formnovalidate aria-label="Schließen"><svg class="ico"><use href="#i-x"/></svg></button>
+    </header>
+    <div class="run-fields" id="runFields"></div>
+    <p class="muted small run-note" id="runNote"></p>
+    <p class="error-text" id="runError" hidden></p>
+    <footer class="dialog-foot">
+      <span class="spacer"></span>
+      <button class="btn ghost" value="cancel" formnovalidate>Abbrechen</button>
+      <button class="btn primary" type="submit" value="run" id="runGo"><svg class="ico"><use href="#i-send"/></svg>Ausführen</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Dialog: Zugangsdaten anzeigen (nur einmal) -->
+<dialog id="keyDialog" class="dialog small-dialog">
+  <form method="dialog">
+    <header class="dialog-head"><h2 id="credTitle">Zugangsdaten</h2></header>
+    <p class="muted" id="credIntro"></p>
+    <div id="credBoxes"></div>
+    <footer class="dialog-foot"><span class="spacer"></span><button class="btn primary" value="ok">Verstanden</button></footer>
+  </form>
+</dialog>
+
+<!-- Dialog: Text eingeben -->
+<dialog id="promptDialog" class="dialog small-dialog">
+  <form method="dialog" id="promptForm">
+    <header class="dialog-head"><h2 id="promptTitle">Umbenennen</h2></header>
+    <input type="text" id="promptInput" maxlength="100">
+    <footer class="dialog-foot">
+      <span class="spacer"></span>
+      <button class="btn ghost" value="no" formnovalidate>Abbrechen</button>
+      <button class="btn primary" value="yes">Speichern</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Dialog: Passwort ändern -->
+<dialog id="passwordDialog" class="dialog small-dialog">
+  <form method="dialog" id="passwordForm">
+    <header class="dialog-head">
+      <h2 id="pwTitle">Passwort ändern</h2>
+      <button class="icon-btn" value="cancel" formnovalidate aria-label="Schließen" id="pwClose"><svg class="ico"><use href="#i-x"/></svg></button>
+    </header>
+    <p class="muted small" id="pwIntro" style="margin-bottom: 14px">Mindestens 10 Zeichen. Ein Satz oder mehrere Wörter sind leichter zu merken und trotzdem sicher.</p>
+    <input type="text" id="pwUser" autocomplete="username" hidden>
+    <label class="field" id="pwCurrentField"><span>Aktuelles Passwort</span><input type="password" id="pwCurrent" autocomplete="current-password"></label>
+    <label class="field"><span>Neues Passwort</span><input type="password" id="pwNew" autocomplete="new-password"></label>
+    <label class="field"><span>Neues Passwort wiederholen</span><input type="password" id="pwRepeat" autocomplete="new-password"></label>
+    <div class="pw-meter" id="pwMeter"><i></i></div>
+    <p class="error-text" id="pwError" hidden></p>
+    <footer class="dialog-foot">
+      <span class="spacer"></span>
+      <button class="btn ghost" value="cancel" formnovalidate id="pwCancel">Abbrechen</button>
+      <button class="btn primary" type="submit" value="save" id="pwSave">Speichern</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Dialog: markierten Text verstecken -->
+<dialog id="secretDialog" class="dialog small-dialog">
+  <form method="dialog" id="secretForm">
+    <header class="dialog-head">
+      <h2>Vor der KI verstecken</h2>
+      <button class="icon-btn" value="cancel" formnovalidate aria-label="Schließen"><svg class="ico"><use href="#i-x"/></svg></button>
+    </header>
+    <p class="muted small">Diese Stelle wird in der ganzen Unterhaltung durch einen Platzhalter ersetzt, auch in früheren und späteren Nachrichten. Die KI bekommt sie nie zu sehen, in der Antwort steht wieder der echte Text.</p>
+    <div class="secret-value" id="secretValue"></div>
+    <div class="field-label">Was ist das?</div>
+    <div class="secret-kinds" id="secretKinds">
+      <button type="button" data-label="GEHEIM" class="active">Geheim</button>
+      <button type="button" data-label="NAME">Person</button>
+      <button type="button" data-label="FIRMA">Firma</button>
+      <button type="button" data-label="NUMMER">Nummer</button>
+      <button type="button" data-label="ORT">Ort</button>
+      <button type="button" data-label="DATEN">Sonstiges</button>
+    </div>
+    <p class="muted small">Die KI sieht dann zum Beispiel <code id="secretExample">[GEHEIM_1]</code>.</p>
+    <footer class="dialog-foot">
+      <span class="spacer"></span>
+      <button class="btn ghost" value="cancel" formnovalidate>Abbrechen</button>
+      <button class="btn primary" type="submit" value="save"><svg class="ico"><use href="#i-lock"/></svg>Verstecken</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Dialog: Über Zwijg -->
+<dialog id="aboutDialog" class="dialog small-dialog about-dialog">
+  <form method="dialog">
+    <header class="dialog-head">
+      <h2>Über Zwijg</h2>
+      <button class="icon-btn" value="close" aria-label="Schließen"><svg class="ico"><use href="#i-x"/></svg></button>
+    </header>
+
+    <div class="about-hero">
+      <span class="logo"><svg viewBox="0 0 32 32"><path d="M10 10h12L10 22h12"/></svg></span>
+      <div>
+        <div class="brand-name">Zwijg <span class="about-version" id="aboutVersion"></span></div>
+        <div class="muted small">Datenschutz für KI in der Arztpraxis</div>
+      </div>
+    </div>
+
+    <dl class="about-facts">
+      <dt>Entwickelt von</dt>
+      <dd>Kay Schnieders
+        <span class="about-profiles">
+          <a href="https://github.com/kschnieders" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://www.linkedin.com/in/kschnieders/" target="_blank" rel="noopener">LinkedIn</a>
+        </span>
+      </dd>
+      <dt>Quellcode</dt>
+      <dd><a href="https://github.com/kschnieders/zwijg" target="_blank" rel="noopener">github.com/kschnieders/zwijg</a></dd>
+      <dt>Lizenz</dt>
+      <dd>GNU AGPL 3.0, freie Software ohne Gewähr. Die Namensnennung muss in veränderten Fassungen erhalten bleiben.</dd>
+    </dl>
+
+    <h3 class="about-sub">Verwendete Software</h3>
+    <p class="muted small">Zwijg baut auf freien Bibliotheken und Daten auf. Alle erlauben Nutzung und Weitergabe, auch kommerziell.</p>
+    <ul class="about-libs">
+      <li><span><strong>.NET und ASP.NET Core</strong><small>.NET Foundation</small></span><span class="lic">MIT</span></li>
+      <li><span><strong>Anthropic C# SDK</strong><small>Anthropic</small></span><span class="lic">MIT</span></li>
+      <li><span><strong>Microsoft.Extensions.AI</strong><small>Microsoft</small></span><span class="lic">MIT</span></li>
+      <li><span><strong>Microsoft.Data.Sqlite</strong><small>Microsoft</small></span><span class="lic">MIT</span></li>
+      <li><span><strong>PdfPig</strong><small>UglyToad, mit Teilen aus PDFBox und von Adobe</small></span><span class="lic">Apache 2.0</span></li>
+      <li><span><strong>SQLitePCLRaw</strong><small>SourceGear</small></span><span class="lic">Apache 2.0</span></li>
+      <li><span><strong>SQLite</strong><small>sqlite.org</small></span><span class="lic">Public Domain</span></li>
+      <li><span><strong>Ortsliste</strong><small>GeoNames, geonames.org</small></span><span class="lic">CC BY 4.0</span></li>
+    </ul>
+    <p class="muted small">Sprachmodelle, Ollama und Cloud Anbieter gehören nicht zu Zwijg und haben eigene Bedingungen. Alle Lizenztexte stehen in <a href="https://github.com/kschnieders/zwijg/blob/main/THIRD-PARTY-NOTICES.md" target="_blank" rel="noopener">THIRD-PARTY-NOTICES.md</a>.</p>
+
+    <footer class="dialog-foot">
+      <span class="spacer"></span>
+      <button class="btn primary" value="close">Schließen</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Dialog: Version und Updates -->
+<dialog id="updateDialog" class="dialog small-dialog update-dialog">
+  <form method="dialog">
+    <header class="dialog-head">
+      <h2>Version und Updates</h2>
+      <button class="icon-btn" value="close" aria-label="Schließen"><svg class="ico"><use href="#i-x"/></svg></button>
+    </header>
+    <div id="updVerdict"></div>
+    <dl class="about-facts" id="updFacts"></dl>
+    <details class="upd-notes" id="updNotesBox" hidden>
+      <summary>Was ist neu?</summary>
+      <div class="upd-notes-text" id="updNotes"></div>
+    </details>
+    <div id="updHowto"></div>
+    <label class="switch upd-switch"><input type="checkbox" id="updCheck"><span class="track"></span><span>Beim Öffnen der Übersicht automatisch bei GitHub nachsehen</span></label>
+    <p class="muted small">Dabei fragt Zwijg nur die neueste Versionsnummer ab. Es werden keine Daten aus der Praxis übertragen.</p>
+    <footer class="dialog-foot">
+      <button class="btn ghost" type="button" id="updRefresh"><svg class="ico"><use href="#i-refresh"/></svg>Jetzt prüfen</button>
+      <span class="spacer"></span>
+      <button class="btn primary" value="close">Schließen</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Dialog: Bestätigung -->
+<dialog id="confirmDialog" class="dialog small-dialog">
+  <form method="dialog">
+    <header class="dialog-head"><h2 id="confirmTitle">Sicher?</h2></header>
+    <p class="muted" id="confirmText"></p>
+    <footer class="dialog-foot">
+      <span class="spacer"></span>
+      <button class="btn ghost" value="no">Abbrechen</button>
+      <button class="btn danger" value="yes" id="confirmYes">Ja, weiter</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Detailansicht eines Protokolleintrags -->
+<div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Protokolleintrag" tabindex="-1">
+  <header class="drawer-head">
+    <div>
+      <div class="muted small" id="drawerPos"></div>
+      <h2 id="drawerTitle">Eintrag</h2>
+    </div>
+    <div class="drawer-nav">
+      <button class="icon-btn" id="drawerPrev" title="Neuerer Eintrag (Pfeil hoch)" aria-label="Neuerer Eintrag"><svg class="ico"><use href="#i-up"/></svg></button>
+      <button class="icon-btn" id="drawerNext" title="Älterer Eintrag (Pfeil runter)" aria-label="Älterer Eintrag"><svg class="ico"><use href="#i-down"/></svg></button>
+      <button class="icon-btn" id="drawerClose" title="Schließen (Esc)" aria-label="Schließen"><svg class="ico"><use href="#i-x"/></svg></button>
+    </div>
+  </header>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<div class="menu" id="menu" hidden></div>
+<div class="tooltip" id="tooltip" hidden></div>
+<div class="toasts" id="toasts"></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

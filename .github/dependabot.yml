@@ -1,0 +1,24 @@
+# Dependabot meldet sich einmal pro Woche mit einem Pull Request, wenn es neue Versionen gibt.
+# Zusammengefasst pro Bereich, damit es nicht zu viele einzelne Pull Requests werden.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      nuget:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly

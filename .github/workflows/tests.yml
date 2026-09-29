@@ -1,0 +1,36 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Tests ausführen
+        run: dotnet test
+
+      # Bricht ab, wenn ein genutztes Paket eine bekannte Sicherheitslücke hat
+      - name: Pakete auf Sicherheitslücken prüfen
+        run: |
+          dotnet list package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then
+            echo "Mindestens ein Paket hat eine bekannte Sicherheitslücke"
+            exit 1
+          fi
+
+  # Baut das Docker Image nur zur Probe, hochgeladen wird erst beim Release
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Docker Image bauen
+        run: docker build --build-arg VERSION=0.0.0 -t zwijg-test .

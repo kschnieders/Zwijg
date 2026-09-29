@@ -1,0 +1,127 @@
+# Medizinische Begriffe auf Deutsch, Latein und Griechisch. Ein Begriff pro Zeile, Groß und Kleinschreibung egal.
+# wort    genau dieses Wort
+# wort*   Wörter, die so anfangen (herzinfarkt* findet auch Herzinfarkten)
+# *wort*  Wörter, die das enthalten (*karzinom* findet auch Mammakarzinom)
+# Bewusst keine Stämme, die Alltagswörter treffen: herz* (herzlich), darm* (Darmstadt), anal* (Analyse), sucht (er sucht).
+
+# Allgemein
+krank* erkrank* gesundheit* diagnos* befund* symptom* beschwerde* anamnese* therapi* behandl* medikament* medikation*
+tablette* rezept* dosis dosierung* operation* operiert* narkose* klinik* krankenhaus* notaufnahme station* ambulant*
+reha* pflege* pflegegrad* arbeitsunfähig* au-bescheinigung überweisung* laborwert* blutbild* arztbrief*
+entlassbrief* epikrise* anamnes* untersuchung* vorsorge* nachsorge* früherkennung*
+notarzt* rettungsdienst* intensivstation* krankschreibung* krankmeldung* attest* heilmittel* hilfsmittel*
+verordnung* prognose* rezidiv* remission* chronisch* akut* palliativ* hospiz*
+
+# Anatomie
+organ organe organversagen* organspende* leistenbruch* rachenmandel* gaumenmandel* mandelentzündung* spritze spritzen
+anatomie* anatomisch* gewebe* zelle* skelett* knochen* schädel* wirbel* wirbelsäule* bandscheibe* gelenk*
+muskel* sehne* bänder knorpel* meniskus menisken kreuzband* hüfte hüftgelenk* knie kniegelenk* kniescheibe*
+schulter* ellenbogen* handgelenk* sprunggelenk* fußgelenk* ferse* achillessehne* becken* steißbein*
+brustkorb* rippe* rippen* brustbein* schlüsselbein* schulterblatt* oberarm* unterarm* oberschenkel* unterschenkel*
+wade* mittelfuß* mittelhand* finger* zeh zehe* zehen* nacken* halswirbel* lendenwirbel* brustwirbel*
+gehirn* hirn* kleinhirn* rückenmark* nerv* nerven* schilddrüse* nebenniere* hypophyse* bauchspeicheldrüse*
+lunge lungen* bronchie* bronchien* luftröhre* kehlkopf* rachen* speiseröhre* magen* zwölffingerdarm*
+dünndarm* dickdarm* enddarm* mastdarm* blinddarm* darm darmkrebs* darmspiegelung* darmentzündung* darmverschluss*
+leber* galle gallenblase* gallenstein* gallengang* milz niere nieren* harnleiter* harnblase* harnröhre* blasenentzündung*
+prostata* hoden gebärmutter* eierstock* eierstöcke* eileiter* scheide* muttermund* brustdrüse* lymphknoten* lymph*
+herz herzmuskel* herzklappe* herzkranzgefäß* herzkammer* herzrhythmus* herzinsuffizienz* herzschwäche* herzinfarkt*
+herzkatheter* herzschrittmacher* herzfehler* herzrasen herzstolpern herzgeräusch* vorhof* aorta* arterie* arterien*
+vene venen* kapillare* gefäß* blutgefäß* haut hautausschlag* hautkrebs* unterhaut* schleimhaut* netzhaut* hornhaut*
+bindehaut* trommelfell* mittelohr* innenohr* gehörgang* nasennebenhöhle* nasenscheidewand* kiefergelenk* oberkiefer*
+unterkiefer* zahn* zähne* zahnfleisch* zunge*
+caput collum cervix zervix thorax abdomen pelvis femur tibia fibula humerus ulna patella scapula clavicula sternum
+vertebra* sacrum coccyx calcaneus talus metatars* metacarp* phalanx phalangen carpus tarsus ligament* ligamentum
+tendo bursa cartilago cerebrum cerebellum medulla hypophysis thyreoidea trachea bronchus bronchi bronchial* pulmo
+pulmonal* pleura* cor myokard* perikard* endokard* koronar* coronar* ventrikel* atrium aortal* arteria vena venös* venoes*
+hepar hepat* lien splen* gaster gastral* ösophag* oesophag* duoden* jejunum ileum kolon* colon rektum rectum sigma
+appendix pankreas* ren renal* vesica urethra* ureter* uterus uterin* ovar* tuba vagina* prostatic* skrotum scrotum
+penis testis mamma mammae axilla* inguinal* femoral* lumbal* zervikal* cervical* thorakal* sakral* kranial* okzipital*
+temporal* frontal* parietal* retina* cornea* konjunktiva* sklera* glaskörper* tympan* cochlea*
+
+# Symptome und Beschwerden
+schmerz* *schmerz* weh *weh fieber* husten* übelkeit erbrechen durchfall* schwindel* atemnot müdigkeit erschöpf*
+blutung* entzünd* *entzündung* infekt* infektion* verletz* fraktur* *fraktur* bruch knochenbruch* wunde wunden wundheil*
+kopfweh bauchweh zahnweh sodbrennen blähung* verstopfung obstipation diarrhoe diarrhö emesis nausea vertigo
+synkope* ohnmacht* kollaps* krampf* krämpfe tremor taubheit* kribbeln lähmung* sehstörung* doppelbilder sprachstörung*
+schlafstörung* schlaflos* insomnie appetitlos* gewichtsverlust gewichtszunahme juckreiz pruritus ausschlag* exanthem*
+rötung* schwellung* ödem* *ödem erguss* *erguss hämatom* bluterguss* prellung* zerrung* verstauchung* distorsion*
+kontusion* contusio commotio luxation* bänderriss* sehnenriss* kreuzbandriss* meniskusriss* bandscheibenvorfall*
+hexenschuss ischias* lumbago tinnitus ohrgeräusch* heiserkeit schnupfen erkältung* grippe* influenza auswurf sputum
+dyspnoe tachykard* bradykard* arrhythm* palpitation* angina pektangin* brustenge atembeschwerde* kurzatmig* nachtschweiß
+schüttelfrost gliederschmerz* inkontinenz* harndrang* blut* *blutung schwächeanfall hitzewallung* zyklusstörung*
+
+# Krankheiten
+krebs* *krebs tumor* *tumor* karzinom* *karzinom* metasta* leukämie diabet* *diabet* hypertonie hypotonie bluthochdruck
+herzinfarkt* infarkt* *infarkt* schlaganfall* apoplex* insult* demenz* alzheimer parkinson epilep* asthma copd allergi*
+*allergie* depressi* psych* angststörung* panik* suchterkrank* süchtig* alkohol* drogen* suizid* burnout burn-out
+essstörung* anorexie bulimie adhs ads autismus autist* zwangsstörung* ptbs trauma* schizophren* bipolar* manie manisch*
+hiv aids hepatitis tuberkulose tbc covid* corona* sars-cov* migräne rheuma* arthrose arthritis gicht adipositas
+übergewicht* untergewicht* magersucht* schwanger* fehlgeburt* abort* entbindung* geburtshilf* behinderung* frühgeburt*
+kaiserschnitt* sectio gravidität* partus wochenbett* stillzeit
+thrombose* *thrombose embolie* *embolie lungenembolie* varikose varizen krampfader* insuffizienz* *insuffizienz*
+stenose* *stenose sklerose* arteriosklerose* khk pavk avk tia herzrhythmusstörung* vorhofflimmern*
+kammerflimmern* kardiomyopathie* myokarditis endokarditis perikarditis herzklappenfehler*
+hyperlipidämie hypercholesterinämie fettstoffwechsel* hypothyreose hyperthyreose struma kropf hashimoto basedow
+niereninsuffizienz* dialyse* nierenstein* nephrolithiasis cholelithiasis gallenkolik* nierenkolik* kolik*
+gastritis refluxkrankheit reflux* ulkus ulcus magengeschwür* colitis kolitis morbus crohn divertikel* hämorrhoid*
+fissur* fistel* hernie* leistenbruch* nabelbruch* narbenbruch* appendizitis pankreatitis zirrhose leberzirrhose*
+fettleber* ikterus gelbsucht
+pneumonie* lungenentzündung* bronchitis sinusitis tonsillitis pharyngitis laryngitis otitis konjunktivitis
+mittelohrentzündung* mandelentzündung* nebenhöhlenentzündung* blasenentzündung* nierenbeckenentzündung* zystitis
+pyelonephritis prostatitis
+masern mumps röteln windpocken varizellen gürtelrose herpes* zoster scharlach keuchhusten pertussis diphtherie
+tetanus polio fsme borreliose zeckenbiss* norovirus rotavirus rsv streptokokk* staphylokokk* mrsa sepsis blutvergiftung
+pilzinfektion* fußpilz nagelpilz mykose* soor chlamydien gonorrhoe tripper syphilis hpv warze* krätze läuse kopfläuse
+neurodermitis psoriasis schuppenflechte ekzem* dermatitis urtikaria nesselsucht akne rosazea erysipel wundrose abszess*
+phlegmone furunkel* karbunkel* dekubitus druckgeschwür* ulcus cruris
+osteoporose* skoliose* spondylose* spondylarthrose* gonarthrose* coxarthrose* rhizarthrose* polyarthritis
+epicondylitis tennisellenbogen* golferellenbogen* karpaltunnel* tendinitis tendovaginitis bursitis fibromyalgie*
+glaukom katarakt makuladegeneration* amd hörsturz* schwerhörig* taubheit
+lymphom* sarkom* melanom* basaliom* spinaliom* adenom* myom* lipom* fibrom* hämangiom* glioblastom* glioma meningeom*
+neurinom* karzinoid* neoplas* malign* benign* onkolog* zyste* *zyste polyp* schilddrüsenknoten*
+anämie* blutarmut eisenmangel* vitaminmangel* b12-mangel* thrombozytopenie* leukopenie* hämophilie* bluterkrankheit
+lupus sarkoidose vaskulitis* polymyalgie* sjögren raynaud
+
+# Untersuchungen, Eingriffe und Behandlungen
+mrt ct ekg eeg emg röntgen* ultraschall* sonographie* sonografie* sono biopsie* endoskop* koloskop* gastroskop*
+mammograph* mammograf* szintigraph* szintigraf* angiograph* angiograf* echokardiograph* echokardiograf*
+langzeit-ekg belastungs-ekg ergometrie* spirometrie* lungenfunktion* audiometrie* punktion* katheter* herzkatheter*
+dialyse* transfusion* infusion* injektion* impfung* impfen geimpft impfstoff* impfpass* auffrischung* spritze* drainage*
+gipsverband* physiotherap* ergotherap* logopäd* psychotherap* akupunktur* chemo* chemotherapie* bestrahlung*
+strahlentherap* amputation* implantat* prothese* endoprothese* stent* bypass* transplant* schrittmacher* narkose*
+anästhesie* lokalanästhesie* sedierung* intubation* beatmung* reanimation* wundversorgung* verbandswechsel* nähte
+fäden abstrich* blutentnahme* blutabnahme* urinprobe* stuhlprobe* stuhlgang* laboruntersuchung*
+kontrolluntersuchung* hautkrebsscreening* check-up gesundheitsuntersuchung*
+
+# Labor und Messwerte
+blutdruck* rr mmhg puls blutzucker* hba1c cholesterin* kreatinin tsh crp inr quick leukozyt* erythrozyt* thrombozyt*
+hämoglobin* hb hämatokrit ferritin vitamin* natrium kalium calcium kalzium magnesium phosphat harnsäure harnstoff gfr
+egfr ldl hdl triglyzerid* triglycerid* gamma-gt ggt got gpt bilirubin lipase amylase troponin d-dimer* bnp nt-probnp
+psa ft3 ft4 urinstatus urin* albumin* protein* eiweiß* glukose* glucose* laktat* sauerstoffsättigung spo2 bmi
+körpertemperatur* temperatur* blutsenkung* bsg
+
+# Wirkstoffe und Handelsnamen
+ibuprofen paracetamol metamizol novaminsulfon novalgin aspirin ass diclofenac voltaren insulin* metformin l-thyroxin lthyroxin
+levothyroxin euthyrox cortison kortison prednisolon prednison dexamethason hydrocortison betamethason mometason
+budesonid beclometason tramadol tilidin morphin fentanyl oxycodon hydromorphon tapentadol codein paracodin marcumar
+phenprocoumon warfarin xarelto eliquis pradaxa lixiana dabigatran clopidogrel ticagrelor prasugrel antibiotik*
+antidepressiv* neuroleptik* opioid* chemotherapie* amoxicillin cefuroxim cotrim cotrimoxazol nitrofurantoin fosfomycin
+clarithromycin azithromycin doxycyclin ciprofloxacin levofloxacin metronidazol furosemid torasemid hydrochlorothiazid
+hct spironolacton amlodipin lisinopril enalapril valsartan losartan candesartan metoprolol bisoprolol nebivolol
+atorvastatin simvastatin rosuvastatin ezetimib digoxin digitoxin amiodaron allopurinol febuxostat colchicin
+methotrexat mtx hydroxychloroquin sulfasalazin mesalazin salbutamol formoterol salmeterol tiotropium montelukast
+cetirizin loratadin desloratadin pantoprazol omeprazol esomeprazol ranitidin famotidin domperidon metoclopramid mcp
+ondansetron vomex dimenhydrinat loperamid macrogol movicol lactulose iberogast sertralin citalopram escitalopram
+fluoxetin paroxetin venlafaxin duloxetin mirtazapin amitriptylin trimipramin doxepin quetiapin olanzapin risperidon
+aripiprazol haloperidol pipamperon melperon lorazepam diazepam oxazepam alprazolam midazolam zopiclon zolpidem melatonin
+pregabalin gabapentin levetiracetam lamotrigin valproat carbamazepin lithium methylphenidat ritalin donepezil
+memantin rivastigmin levodopa l-dopa estradiol östrogen* progesteron gestagen* levonorgestrel pille testosteron
+clotrimazol nystatin aciclovir valaciclovir oseltamivir tamiflu colecalciferol vigantol folsäure cobalamin eisentablette*
+ozempic wegovy mounjaro semaglutid tirzepatid liraglutid dulaglutid jardiance forxiga janumet sitagliptin
+empagliflozin dapagliflozin lantus levemir novorapid humalog tresiba trulicity victoza glibenclamid
+thomapyrin nurofen dolormin buscopan butylscopolamin sab simplex lefax kamistad bepanthen fenistil
+
+# Abkürzungen aus Arztbriefen
+au khk pavk copd hws bws lws isg tep hep kep op postop präop postoperativ* präoperativ* dd icd
+ekg eeg emg mrt ct pet hno zns pns gi uti hwi bwi nsaid nsar ppi ace-hemmer betablocker diuretik* antikoagul*
+blutverdünn* gerinnungshemm* thrombozytenaggregationshemm*
