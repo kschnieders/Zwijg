@@ -39,9 +39,10 @@ public sealed class ApiKeyMiddleware(RequestDelegate next, SettingsStore store, 
 
         if (user == null)
         {
-            // Nur die Länge loggen, nie den Schlüssel selbst
+            // Nur die Länge loggen, nie den Schlüssel selbst. Steuerzeichen raus, sonst ließen sich
+            // mit einem Zeilenumbruch im Pfad falsche Logzeilen einschleusen.
             if (key != null)
-                logger.LogWarning("Anmeldung abgelehnt für {Path}, Schlüssel mit {Length} Zeichen", path, key.Length);
+                logger.LogWarning("Anmeldung abgelehnt für {Path}, Schlüssel mit {Length} Zeichen", ForLog(path), key.Length);
             await Deny(context, 401, new { error = key != null ? "Ungültiger Zugangsschlüssel" : "Bitte anmelden" });
             return;
         }
@@ -86,6 +87,13 @@ public sealed class ApiKeyMiddleware(RequestDelegate next, SettingsStore store, 
     {
         context.Response.StatusCode = status;
         await context.Response.WriteAsJsonAsync(body);
+    }
+
+    private static string ForLog(PathString path)
+    {
+        var text = path.Value ?? "";
+        text = new string(text.Select(c => char.IsControl(c) ? '_' : c).ToArray());
+        return text.Length <= 200 ? text : text[..200];
     }
 
     private static string? ReadKey(HttpRequest request)

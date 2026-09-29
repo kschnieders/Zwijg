@@ -629,7 +629,9 @@ function show(view) {
   document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "view-" + view);
 
   const loaders = { dashboard: loadDashboard, connections: loadConnections, rules: loadRules, users: loadUsers, notices: loadNotices, audit: loadAudit };
-  loaders[view]?.().catch(err => toast(err.message, true));
+  // Nur eigene Einträge aufrufen, nie etwas wie "constructor" aus der Adresszeile
+  if (Object.hasOwn(loaders, view))
+    loaders[view]().catch(err => toast(err.message, true));
 }
 
 document.querySelectorAll(".nav button").forEach(b => b.addEventListener("click", () => show(b.dataset.view)));
@@ -3190,7 +3192,13 @@ async function resetPassword(u) {
 // Gut lesbares Startpasswort ohne verwechselbare Zeichen, z.B. "kT7m-Qx3p-Hn8w"
 function generatePassword() {
   const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const pick = () => chars[crypto.getRandomValues(new Uint32Array(1))[0] % chars.length];
+  // Zahlen über dem letzten vollen Vielfachen verwerfen, sonst kämen manche Zeichen minimal öfter vor
+  const limit = Math.floor(0x100000000 / chars.length) * chars.length;
+  const pick = () => {
+    let n;
+    do n = crypto.getRandomValues(new Uint32Array(1))[0]; while (n >= limit);
+    return chars[n % chars.length];
+  };
   return [0, 1, 2].map(() => Array.from({ length: 4 }, pick).join("")).join("-");
 }
 
