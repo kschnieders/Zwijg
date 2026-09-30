@@ -5,6 +5,9 @@ COPY . .
 RUN dotnet publish src/Zwijg.Gateway -c Release -p:Version=$VERSION -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
+# Texterkennung für eingescannte PDFs und Fotos, mit deutschen Sprachdaten
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
 LABEL org.opencontainers.image.source="https://github.com/kschnieders/zwijg"
 LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 WORKDIR /app

@@ -169,6 +169,11 @@ public sealed class SettingsStore
         if (s.Users.Any(u => string.IsNullOrWhiteSpace(u.Name)))
             throw new SettingsException("Jeder Benutzer braucht einen Namen");
 
+        if (s.Ocr.MaxPages is < 1 or > 200)
+            throw new SettingsException("Die Seitenzahl für die Texterkennung muss zwischen 1 und 200 liegen");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(s.Ocr.Languages ?? "", @"^[a-z_]{3,20}(\+[a-z_]{3,20}){0,5}$"))
+            throw new SettingsException("Sprachen bitte wie deu oder deu+eng angeben");
+
         if (s.Users.Any(u => u.DailyLimit is < 1 or > 100_000))
             throw new SettingsException("Das Tageslimit muss zwischen 1 und 100000 liegen");
 

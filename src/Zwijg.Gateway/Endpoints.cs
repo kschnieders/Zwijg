@@ -2,8 +2,10 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Zwijg.Core.Audit;
+using Zwijg.Core.Ocr;
 using Zwijg.Core.Pseudonymization;
 using Zwijg.Core.Routing;
 using Zwijg.Core.Security;
@@ -97,7 +99,7 @@ public static class Endpoints
 
         // Dokument nur prüfen, ohne KI: was wird gefunden, was wird ersetzt, würde es blockiert?
         app.MapPost("/v1/documents/check", async (HttpContext ctx, Pseudonymizer pseudonymizer, InjectionDetector detector,
-            SettingsStore settings, CancellationToken ct) =>
+            SettingsStore settings, IMemoryCache cache, CancellationToken ct) =>
         {
             var user = ApiKeyMiddleware.GetUser(ctx);
             if (!user.CanUseDocuments)
@@ -109,7 +111,7 @@ public static class Endpoints
             if (file == null)
                 return Results.Json(new { error = "Keine Datei erhalten" }, statusCode: 400);
 
-            var doc = await ReadDocumentAsync(file, ct);
+            var doc = await ReadDocumentAsync(file, settings.Current.Ocr, cache, ct);
             if (doc.Error != null)
                 return Results.Json(new { error = doc.Error, scanned = doc.Scanned, pages = doc.Pages }, statusCode: doc.ErrorStatus);
 
@@ -134,6 +136,7 @@ public static class Endpoints
             {
                 fileName = file.FileName,
                 pages = doc.Pages,
+                ocr = doc.Ocr,
                 characters = doc.Text.Length,
                 invisibleChars = invisible,
                 hiddenText = doc.HiddenText.Length > 2000 ? doc.HiddenText[..2000] + " ..." : doc.HiddenText,
@@ -153,7 +156,8 @@ public static class Endpoints
         }).DisableAntiforgery();
 
         // Dokument hochladen (PDF oder Text) und eine Frage dazu stellen
-        app.MapPost("/v1/documents/ask", async (HttpContext ctx, ChatPipeline pipeline, IAuditLog audit, CancellationToken ct) =>
+        app.MapPost("/v1/documents/ask", async (HttpContext ctx, ChatPipeline pipeline, IAuditLog audit, SettingsStore settings,
+            IMemoryCache cache, CancellationToken ct) =>
         {
             if (!ApiKeyMiddleware.GetUser(ctx).CanUseDocuments)
                 return Results.Json(new { error = "Du darfst keine Dokumente hochladen. Bitte wende dich an die Verwaltung." }, statusCode: 403);
@@ -172,7 +176,7 @@ public static class Endpoints
                 return Results.Json(new { error = "Datei ist zu groß (max. 20 MB)" }, statusCode: 413);
 
             var user = ApiKeyMiddleware.GetUser(ctx);
-            var doc = await ReadDocumentAsync(file, ct);
+            var doc = await ReadDocumentAsync(file, settings.Current.Ocr, cache, ct);
             if (doc.Error != null)
                 return Results.Json(new { error = doc.Error }, statusCode: doc.ErrorStatus);
 
@@ -297,6 +301,7 @@ public static class Endpoints
         app.MapAdminDashboard();
         app.MapUpdates();
         app.MapProtect();
+        app.MapOcr();
         app.MapAdminRules();
         app.MapHistory();
         app.MapAuth();
@@ -343,7 +348,7 @@ public static class Endpoints
     }
 
     // Liest PDF oder Text. Prüfen und Fragen nutzen genau diese Methode, damit beide dasselbe sehen.
-    private static async Task<DocumentRead> ReadDocumentAsync(IFormFile file, CancellationToken ct)
+    private static async Task<DocumentRead> ReadDocumentAsync(IFormFile file, OcrSettings ocr, IMemoryCache cache, CancellationToken ct)
     {
         if (file.Length == 0)
             return DocumentRead.Fail("Die Datei ist leer", 400);
@@ -351,6 +356,14 @@ public static class Endpoints
             return DocumentRead.Fail("Datei ist zu groß (max. 20 MB)", 413);
 
         await using var stream = file.OpenReadStream();
+
+        // Fotos und Scans als Bild gehen direkt in die Texterkennung
+        if (ImageExtension(file) is { } imageExtension)
+        {
+            var bytes = await ReadAllAsync(stream, ct);
+            return await OcrAsync(bytes, imageExtension, 1, ocr, cache, ct);
+        }
+
         if (!IsPdf(file))
         {
             using var reader = new StreamReader(stream, Encoding.UTF8);
@@ -359,22 +372,65 @@ public static class Endpoints
         }
 
         PdfInspection pdf;
+        byte[] pdfBytes;
         try
         {
-            using var buffer = new MemoryStream();
-            await stream.CopyToAsync(buffer, ct);
-            buffer.Position = 0;
-            pdf = PdfInspector.Inspect(buffer);
+            pdfBytes = await ReadAllAsync(stream, ct);
+            pdf = PdfInspector.Inspect(new MemoryStream(pdfBytes));
         }
         catch (Exception)
         {
             return DocumentRead.Fail("PDF konnte nicht gelesen werden. Ist es verschlüsselt oder beschädigt?", 400);
         }
 
+        // Keine Textebene: eingescannt oder gefaxt, also Texterkennung
         if (pdf.VisibleText.Length == 0)
-            return DocumentRead.Fail("Im PDF wurde kein Text gefunden. Vermutlich ist es eingescannt, dafür bräuchte es Texterkennung (OCR).", 422, pdf.PageCount);
+            return await OcrAsync(pdfBytes, null, pdf.PageCount, ocr, cache, ct);
 
         return new DocumentRead(pdf.VisibleText, pdf.PageCount, pdf.HiddenText, CheckHiddenText(pdf), null, 200);
+    }
+
+    // Prüfen und Fragen lesen dasselbe Dokument kurz nacheinander. Das Ergebnis bleibt deshalb
+    // 10 Minuten im Arbeitsspeicher, nie auf der Platte, damit die Texterkennung nicht zweimal läuft.
+    private static async Task<DocumentRead> OcrAsync(byte[] bytes, string? imageExtension, int pages, OcrSettings ocr,
+        IMemoryCache cache, CancellationToken ct)
+    {
+        if (!ocr.Enabled)
+            return DocumentRead.Fail("Kein Text gefunden. Vermutlich ist es ein Scan, und die Texterkennung (OCR) ist ausgeschaltet.", 422, pages);
+
+        var key = "ocr:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)) + ":" + ocr.Languages + ":" + ocr.MaxPages;
+        if (!cache.TryGetValue(key, out OcrResult? result) || result == null)
+        {
+            result = imageExtension != null
+                ? await TesseractOcr.ReadImageAsync(bytes, imageExtension, ocr.ToOptions(), ct)
+                : await TesseractOcr.ReadPdfAsync(bytes, ocr.ToOptions(), ct);
+            if (result.Error == null)
+                cache.Set(key, result, TimeSpan.FromMinutes(10));
+        }
+
+        if (result.Error != null)
+            return DocumentRead.Fail($"Kein Text gefunden, und die Texterkennung ging nicht: {result.Error}. Ein Admin kann das unter Regeln, Erkennung einrichten.", 422, pages);
+        if (result.Text.Length == 0)
+            return DocumentRead.Fail("Auch die Texterkennung hat keinen Text gefunden. Ist der Scan sehr blass oder schief?", 422, result.Pages);
+
+        return new DocumentRead(result.Text, result.Pages, "", InjectionResult.Empty, null, 200)
+        {
+            Ocr = true,
+            OcrPagesSkipped = result.Pages - result.PagesRead,
+        };
+    }
+
+    private static async Task<byte[]> ReadAllAsync(Stream stream, CancellationToken ct)
+    {
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer, ct);
+        return buffer.ToArray();
+    }
+
+    private static string? ImageExtension(IFormFile file)
+    {
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        return ext is ".png" or ".jpg" or ".jpeg" or ".tif" or ".tiff" or ".bmp" ? ext : null;
     }
 
     // Status für Anzeige und Export, gleiche Regeln wie der Filter in der Datenbank
@@ -486,6 +542,11 @@ public sealed record AuditFilter(
 public sealed record DocumentRead(string Text, int Pages, string HiddenText, InjectionResult HiddenFindings, string? Error, int ErrorStatus)
 {
     public bool Scanned { get; init; }
+
+    // Text kam aus der Texterkennung, kann also Lesefehler enthalten
+    public bool Ocr { get; init; }
+
+    public int OcrPagesSkipped { get; init; }
 
     public static DocumentRead Fail(string error, int status, int pages = 0) =>
         new("", pages, "", InjectionResult.Empty, error, status) { Scanned = status == 422 };

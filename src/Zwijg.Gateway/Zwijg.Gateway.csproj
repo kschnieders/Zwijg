@@ -7,6 +7,7 @@
   <!-- Lizenz und Hinweise müssen jeder Weitergabe beiliegen -->
   <ItemGroup>
     <None Include="..\..\LICENSE;..\..\NOTICE;..\..\THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
+    <None Include="..\..\licenses\PDFium.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="licenses\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Die Testschlüssel aus der Entwicklung gehören nicht in ein Release -->

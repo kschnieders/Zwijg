@@ -251,10 +251,10 @@
         <div class="stack">
           <div class="card" id="docUploadCard">
             <label class="drop" id="drop">
-              <input type="file" id="docFile" accept=".pdf,.txt,application/pdf,text/plain" hidden>
+              <input type="file" id="docFile" accept=".pdf,.txt,.png,.jpg,.jpeg,.tif,.tiff,.bmp,application/pdf,text/plain,image/*" hidden>
               <svg class="ico drop-ico"><use href="#i-upload"/></svg>
               <strong id="dropText">Datei hierher ziehen oder klicken</strong>
-              <span class="muted small">PDF oder TXT, bis 20 MB. Wird sofort geprüft, noch ohne KI.</span>
+              <span class="muted small">PDF, TXT oder Foto (JPG, PNG, TIFF), bis 20 MB. Wird sofort geprüft, noch ohne KI. Scans liest die Texterkennung.</span>
             </label>
             <div id="docStatus"></div>
           </div>
@@ -512,6 +512,37 @@
 
       <!-- Erkennung -->
       <div class="rule-pane stack" data-pane="detect" hidden>
+        <div class="card">
+          <div class="card-title">Texterkennung für Scans (OCR)</div>
+          <p class="muted small" style="margin-bottom: 12px">Eingescannte oder gefaxte PDFs und Fotos von Befunden werden mit Tesseract gelesen. Das läuft komplett auf diesem Rechner.</p>
+          <div id="ocrStatus"></div>
+          <label class="switch"><input type="checkbox" id="ocrEnabled"><span class="track"></span><span>Scans und Fotos mit Texterkennung lesen</span></label>
+          <div class="form-grid" style="margin-top: 12px">
+            <label class="field">
+              <span>Pfad zu Tesseract</span>
+              <input type="text" id="ocrPath" placeholder="leer lassen, dann sucht Zwijg selbst" spellcheck="false">
+            </label>
+            <label class="field">
+              <span>Ordner mit Sprachdaten</span>
+              <input type="text" id="ocrTessdata" placeholder="leer lassen für die von Tesseract" spellcheck="false">
+            </label>
+            <label class="field">
+              <span>Sprachen</span>
+              <input type="text" id="ocrLangs" placeholder="deu+eng" spellcheck="false">
+              <small class="muted">Mehrere mit + verbinden. deu ist Deutsch, eng Englisch.</small>
+            </label>
+            <label class="field">
+              <span>Höchstens so viele Seiten</span>
+              <input type="number" id="ocrPages" min="1" max="200">
+              <small class="muted">Pro Seite dauert es ein paar Sekunden.</small>
+            </label>
+          </div>
+          <div class="actions">
+            <button class="btn ghost" id="ocrRecheck" type="button"><svg class="ico"><use href="#i-refresh"/></svg>Erneut prüfen</button>
+            <button class="btn primary" id="ocrSave" type="button"><svg class="ico"><use href="#i-check"/></svg>Speichern</button>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-title">Protokoll und Erkennung</div>
           <label class="switch"><input type="checkbox" id="storePrompts"><span class="track"></span><span>Pseudonymisierte Fragen im Protokoll speichern</span></label>
@@ -1103,6 +1134,7 @@
       <li><span><strong>PdfPig</strong><small>UglyToad, mit Teilen aus PDFBox und von Adobe</small></span><span class="lic">Apache 2.0</span></li>
       <li><span><strong>SQLitePCLRaw</strong><small>SourceGear</small></span><span class="lic">Apache 2.0</span></li>
       <li><span><strong>SQLite</strong><small>sqlite.org</small></span><span class="lic">Public Domain</span></li>
+      <li><span><strong>Docnet mit PDFium</strong><small>Seiten von Scans als Bild, für die Texterkennung</small></span><span class="lic">MIT, BSD</span></li>
       <li><span><strong>Ortsliste</strong><small>GeoNames, geonames.org</small></span><span class="lic">CC BY 4.0</span></li>
     </ul>
     <p class="muted small">Sprachmodelle, Ollama und Cloud Anbieter gehören nicht zu Zwijg und haben eigene Bedingungen. Alle Lizenztexte stehen in <a href="https://github.com/kschnieders/zwijg/blob/main/THIRD-PARTY-NOTICES.md" target="_blank" rel="noopener">THIRD-PARTY-NOTICES.md</a>.</p>

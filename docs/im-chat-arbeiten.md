@@ -40,7 +40,7 @@ Ein kopierter Text verlässt die Praxis. Deshalb gelten dieselben Regeln wie fü
 ## Dokumente prüfen und befragen
 
 1. Links auf **Dokument**
-2. PDF oder Textdatei hochladen
+2. PDF, Textdatei oder Foto hochladen. Scans liest die [Texterkennung](texterkennung.md)
 3. Zwijg zeigt zuerst einen Prüfbericht: versteckter Text, Manipulationsversuche, erkannte Patientendaten
 4. Rechts steht, wie die KI das Dokument sieht
 5. Ist alles in Ordnung, eine Frage stellen
