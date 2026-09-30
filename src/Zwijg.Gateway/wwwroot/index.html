@@ -106,6 +106,7 @@
       <div class="nav-label">Arbeiten</div>
       <button data-view="chat"><svg class="ico"><use href="#i-chat"/></svg>Chat</button>
       <button data-view="doc" id="navDoc"><svg class="ico"><use href="#i-doc"/></svg>Dokument</button>
+      <button data-view="protect" id="navProtect"><svg class="ico"><use href="#i-copy"/></svg>Text schützen</button>
 
       <!-- Verlauf als eigener Abschnitt, Überschrift klappt auf und zu -->
       <div class="conv-section" id="convSection" hidden>
@@ -184,6 +185,55 @@
           <div class="chips" id="chips"></div>
           <div class="secret-list" id="secretList" hidden></div>
         </aside>
+      </div>
+    </section>
+
+    <!-- Text schützen: für Programme, die sich nicht anbinden lassen -->
+    <section class="view" id="view-protect" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Text schützen</h1>
+          <p class="muted">Für Programme, die sich nicht an Zwijg anbinden lassen: Text hier schützen, dort einfügen und die Antwort hier zurückholen.</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" id="protectReset"><svg class="ico"><use href="#i-refresh"/></svg>Neu beginnen</button>
+        </div>
+      </header>
+
+      <div class="protect-layout">
+        <div class="card">
+          <div class="card-title"><span class="step">1</span>Text einfügen</div>
+          <textarea id="protectInput" rows="7" placeholder="Zum Beispiel: Bitte formuliere eine freundliche Terminabsage für Herrn Max Mustermann, Termin am Montag um 10 Uhr."></textarea>
+          <div class="protect-bar">
+            <button class="btn primary" id="protectRun"><svg class="ico"><use href="#i-lock"/></svg>Schützen</button>
+            <span class="muted small" id="protectStatus"></span>
+          </div>
+
+          <div class="card-title protect-next"><span class="step">2</span>Geschützte Fassung, im anderen Programm einfügen</div>
+          <div class="pseudo" id="protectOutput"><span class="muted">Hier erscheint der Text mit Platzhaltern.</span></div>
+          <div class="protect-bar">
+            <button class="btn" id="protectCopy" disabled><svg class="ico"><use href="#i-copy"/></svg>Kopieren</button>
+            <div class="chips" id="protectChips"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><span class="step">3</span>Antwort aus dem anderen Programm einfügen</div>
+          <textarea id="restoreInput" rows="7" placeholder="Die Antwort mit Platzhaltern wie [NAME_1] hier einfügen."></textarea>
+
+          <div class="card-title protect-next"><span class="step">4</span>Antwort mit den echten Daten</div>
+          <div class="pseudo" id="restoreOutput"><span class="muted">Hier erscheint die Antwort mit den echten Daten.</span></div>
+          <div class="protect-bar">
+            <button class="btn" id="restoreCopy" disabled><svg class="ico"><use href="#i-copy"/></svg>Kopieren</button>
+            <span class="muted small" id="restoreStatus"></span>
+          </div>
+
+          <details class="protect-map" id="protectMapBox" hidden>
+            <summary>Zuordnung (<span id="protectMapCount">0</span>)</summary>
+            <div id="protectMap"></div>
+          </details>
+          <p class="muted small protect-note">Die Zuordnung liegt nur in diesem Browserfenster und nicht auf dem Server. Beim Neuladen oder Abmelden ist sie weg.</p>
+        </div>
       </div>
     </section>
 
@@ -607,6 +657,7 @@
                 <option value="">Alle</option>
                 <option value="chat">Chat</option>
                 <option value="document">Dokument</option>
+                <option value="protect">Text schützen</option>
                 <option value="admin">Verwaltung</option>
                 <option value="login">Anmeldung</option>
               </select>

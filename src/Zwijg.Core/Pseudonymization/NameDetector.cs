@@ -108,6 +108,11 @@ public sealed class NameDetector : IPiiDetector
     private static readonly HashSet<string> NotANameWord = new(StringComparer.OrdinalIgnoreCase)
     {
         "Dr", "Doktor", "Prof", "Professor", "Kollege", "Kollegin", "Patient", "Patientin",
+        // Anreden und Zusammenhangswörter, die vor Namen stehen, aber selbst keine sind
+        "Herr", "Herrn", "Frau", "Frl", "Hr", "Fr", "Familie", "Fam", "Eheleute", "Ehepaar", "Name", "Nachname", "Vorname",
+        "Geburtsname", "Geborene", "Geborener", "Versicherte", "Versicherter", "Mitglied", "Bewohner", "Bewohnerin",
+        "Klient", "Klientin", "Hallo", "Liebe", "Lieber", "Kind", "Sohn", "Tochter", "Ehemann", "Ehefrau", "Mutter",
+        "Vater", "Bruder", "Schwester", "Oma", "Opa", "Enkel", "Enkelin", "Angehörige", "Angehöriger", "Pat",
         "Der", "Die", "Das", "Den", "Dem", "Des", "Ein", "Eine", "Einen", "Einem", "Und", "Oder", "Mit", "Von", "Vom",
         "Hat", "Ist", "War", "Wird", "Wurde", "Klagt", "Kommt", "Kam", "Leidet", "Zeigt", "Seit", "Heute", "Gestern",
         "Morgen", "Aktuell", "Bitte", "Danke", "Er", "Sie", "Es", "Wir", "Ich", "Ihr", "Sein", "Seine", "Ihre",

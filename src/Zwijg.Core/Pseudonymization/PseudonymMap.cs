@@ -42,6 +42,11 @@ public sealed class PseudonymMap
 
     public string GetOrAdd(EntityType type, string value, string? label = null)
     {
+        // Jeder Wert zählt einmal für die Sensibilität, auch wenn er per Seed aus einer früheren Runde kommt.
+        // Sonst wäre "Herr Mustermann hat Diabetes" in der zweiten Runde keine Person mit Gesundheitsdaten mehr.
+        if (_counted.Add(value))
+            _typeCounts[type] = _typeCounts.GetValueOrDefault(type) + 1;
+
         if (_byValue.TryGetValue(value, out var existing))
             return existing;
 
@@ -52,9 +57,29 @@ public sealed class PseudonymMap
         var placeholder = $"[{label}_{n}]";
         _byValue[value] = placeholder;
         _byPlaceholder[placeholder] = value;
-        _typeCounts[type] = _typeCounts.GetValueOrDefault(type) + 1;
 
         return placeholder;
+    }
+
+    private readonly HashSet<string> _counted = new(StringComparer.Ordinal);
+
+    // Alle Platzhalter mit ihrem echten Wert, z.B. für "Text schützen", wo das Zurücksetzen im Browser passiert
+    public IReadOnlyDictionary<string, string> Entries => _byPlaceholder;
+
+    // Übernimmt eine Zuordnung aus einer früheren Runde, damit derselbe Name wieder denselben Platzhalter bekommt
+    // und neue Namen nicht dieselbe Nummer erhalten. Ungültige oder doppelte Einträge werden ignoriert.
+    public void Seed(string placeholder, string value)
+    {
+        var m = PlaceholderPattern.Match(placeholder);
+        if (!m.Success || m.Value != placeholder || string.IsNullOrEmpty(value)
+            || _byPlaceholder.ContainsKey(placeholder) || _byValue.ContainsKey(value))
+            return;
+
+        var label = m.Groups["label"].Value;
+        var n = int.Parse(m.Groups["n"].Value, System.Globalization.CultureInfo.InvariantCulture);
+        _counter[label] = Math.Max(_counter.GetValueOrDefault(label), n);
+        _byValue[value] = placeholder;
+        _byPlaceholder[placeholder] = value;
     }
 
     // Setzt die echten Werte wieder ein. Etwas tolerant, falls das Modell

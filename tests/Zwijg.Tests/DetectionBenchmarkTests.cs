@@ -249,7 +249,8 @@ public partial class DetectionBenchmarkTests(ITestOutputHelper output)
         foreach (var marked in withPeople)
         {
             var (text, expected) = Parse(marked);
-            var result = await pseudonymizer.PseudonymizeAsync(text, new PseudonymMap());
+            var map = new PseudonymMap();
+            var result = await pseudonymizer.PseudonymizeAsync(text, map);
             foreach (var e in expected)
             {
                 total++;
@@ -257,6 +258,23 @@ public partial class DetectionBenchmarkTests(ITestOutputHelper output)
                     found++;
                 else
                     output.WriteLine($"VERPASST  {e.Value,-18} in: {result.Replace('\n', ' ')}");
+            }
+
+            // Zu viel ersetzt: ein Name oder Ort, der nicht markiert war, zum Beispiel "Herr" vor dem Namen
+            foreach (var (placeholder, value) in map.Entries)
+            {
+                if (!placeholder.StartsWith("[NAME_") && !placeholder.StartsWith("[ORT_"))
+                    continue;
+                var isMarked = expected.Any(e => e.Value.Equals(value, StringComparison.OrdinalIgnoreCase)
+                    || e.Value.StartsWith(value, StringComparison.OrdinalIgnoreCase)
+                    || e.Value.Contains(value, StringComparison.OrdinalIgnoreCase)
+                    // Größer ersetzt ist in Ordnung, z.B. "48529 Nordhorn" mit Postleitzahl oder "Landkreis Emsland"
+                    || value.Contains(e.Value, StringComparison.OrdinalIgnoreCase));
+                if (!isMarked)
+                {
+                    falsePositives++;
+                    output.WriteLine($"ZU VIEL   {value,-18} in: {result.Replace('\n', ' ')}");
+                }
             }
         }
 

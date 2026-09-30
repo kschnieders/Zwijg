@@ -24,6 +24,19 @@ Der Text ist dann in der ganzen Unterhaltung versteckt, auch in früheren und sp
 
 Neue Vorlagen legen Admins unter **Regeln**, **Vorlagen** an. Felder wie `{{Patient}}` oder `{{Termin:termin}}` werden dann im Chat abgefragt.
 
+## Text für andere Programme schützen
+
+Manche Programme lassen sich nicht an Zwijg anbinden, zum Beispiel ChatGPT im Browser oder ein Schreibprogramm mit KI. Dafür gibt es links **Text schützen**:
+
+1. Text einfügen und **Schützen** klicken
+2. Die geschützte Fassung **Kopieren** und im anderen Programm einfügen
+3. Die Antwort von dort kopieren und rechts einfügen
+4. Zwijg setzt die echten Daten wieder ein, zum **Kopieren**
+
+Schützt man danach einen weiteren Text zum selben Patienten, behält derselbe Name denselben Platzhalter. Die Zuordnung liegt nur im Browserfenster, beim Neuladen ist sie weg. Mit **Neu beginnen** fängt man frisch an.
+
+Ein kopierter Text verlässt die Praxis. Deshalb gelten dieselben Regeln wie für die Cloud: Wer nicht in die Cloud darf, sieht die Seite nicht, und zu sensible Texte, etwa Person mit Diagnose, lehnt Zwijg ab.
+
 ## Dokumente prüfen und befragen
 
 1. Links auf **Dokument**

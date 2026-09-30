@@ -1092,3 +1092,25 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .secret-kinds button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--text); font: inherit; font-size: 13.5px; cursor: pointer; }
 .secret-kinds button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 #secretDialog .field-label { font-size: 13px; font-weight: 600; color: var(--text-2); }
+
+/* Text schützen */
+
+.protect-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1000px) { .protect-layout { grid-template-columns: 1fr; } }
+.protect-layout textarea { width: 100%; resize: vertical; min-height: 140px; background: var(--panel-2); border-radius: 12px; line-height: 1.55; }
+.protect-layout .card-title .step { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: 12px; letter-spacing: 0; }
+.protect-next { margin-top: 22px; }
+.protect-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.protect-bar .chips { margin-top: 0; }
+.pseudo .restored { background: var(--accent-soft); border-radius: 4px; padding: 0 3px; }
+.pseudo mark.unknown { background: var(--crit-soft); color: var(--crit); }
+.protect-map { margin-top: 18px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--panel-2); }
+.protect-map summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.protect-map-row { display: flex; gap: 12px; padding: 5px 0; font-size: 13.5px; border-bottom: 1px solid var(--line); }
+.protect-map-row:last-child { border-bottom: 0; }
+.protect-map-row code { min-width: 130px; color: var(--text-2); }
+.protect-note { margin-top: 12px; }
+.route-tag.external { color: var(--warn); }
+.protect-layout .card + .card { margin-top: 0; }
+#protectOutput .doc-verdict { margin: 0; }
+#protectOutput .doc-verdict strong { display: block; margin-bottom: 2px; }
