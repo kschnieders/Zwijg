@@ -14,6 +14,8 @@ Zwijg selbst steht unter der GNU AGPL 3.0 mit Zusatzbedingungen (siehe `LICENSE`
 | PdfPig | 0.1.16 | Apache 2.0, enthält Teile unter BSD und der Adobe AFM Lizenz (siehe unten) | UglyToad und Mitwirkende | https://github.com/UglyToad/PdfPig |
 | SQLitePCLRaw | 2.1.12 | Apache 2.0 | SourceGear, LLC | https://github.com/ericsink/SQLitePCL.raw |
 | SQLite (in SQLitePCLRaw enthalten) | 3.x | Public Domain | D. Richard Hipp und andere | https://sqlite.org |
+| Docnet.Core | 2.6.0 | MIT | Modestas Petravicius | https://github.com/GowenGit/docnet |
+| PDFium (in Docnet.Core enthalten) | | BSD 3-Clause, enthält Teile unter weiteren freien Lizenzen (siehe `licenses/PDFium.txt`) | The PDFium Authors | https://pdfium.googlesource.com/pdfium |
 
 ## Daten
 
@@ -41,6 +43,7 @@ Diese Pakete werden zum Testen gebraucht und sind im fertigen Gateway nicht enth
 Diese Programme und Dienste liefert Zwijg nicht mit. Wer sie einsetzt, lädt sie selbst herunter und muss deren Bedingungen beachten.
 
 - **Ollama** (MIT), https://github.com/ollama/ollama
+- **Tesseract** für die Texterkennung (Apache 2.0), https://github.com/tesseract-ocr/tesseract. Im Docker Image ist es aus den Debian Paketen mit installiert, die Lizenzen liegen dort unter `/usr/share/doc`.
 - **Sprachmodelle** wie qwen2.5:7b, llama3.1 oder gemma2 haben jeweils eigene Lizenzen. Qwen2.5 7B steht unter Apache 2.0, Llama und Gemma unter eigenen Lizenzen von Meta und Google. Bitte vor dem Einsatz beim jeweiligen Modell nachlesen.
 - Für **Cloud Anbieter** wie Anthropic, OpenAI, Mistral oder Google gelten deren Nutzungsbedingungen. Für Patientendaten braucht es außerdem einen Vertrag zur Auftragsverarbeitung.
 - **Docker Images** (`mcr.microsoft.com/dotnet/aspnet`, `ollama/ollama`) enthalten weitere Software mit eigenen Lizenzen.

@@ -35,6 +35,9 @@ public sealed class GatewaySettings
     public List<ProtectionRule> ProtectionRules { get; set; } = [];
     public List<PromptTemplate> Templates { get; set; } = [];
     public HistoryOptions History { get; set; } = new();
+
+    // Texterkennung für eingescannte PDFs und Fotos
+    public OcrSettings Ocr { get; set; } = new();
 }
 
 public sealed class Connection
@@ -201,4 +204,21 @@ public sealed class HistoryOptions
 
     // Angepinnte bleiben, bis man sie löst. Deshalb eine eigene Obergrenze.
     public int MaxPinned { get; set; } = 10;
+}
+
+public sealed class OcrSettings
+{
+    public bool Enabled { get; set; } = true;
+
+    // Leer lassen, dann sucht Zwijg Tesseract selbst
+    public string? TesseractPath { get; set; }
+
+    // Ordner mit den Sprachdaten (*.traineddata), leer heißt: die von Tesseract selbst
+    public string? TessdataDir { get; set; }
+
+    public string Languages { get; set; } = "deu+eng";
+
+    public int MaxPages { get; set; } = 20;
+
+    public Zwijg.Core.Ocr.OcrOptions ToOptions() => new(TesseractPath, TessdataDir, Languages, MaxPages);
 }

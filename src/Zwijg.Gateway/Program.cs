@@ -16,6 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<GatewayOptions>(builder.Configuration.GetSection("Zwijg"));
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
 
 // Schlüssel zum Verschlüsseln der API Schlüssel liegen neben den Einstellungen.
 // Unter Windows werden sie zusätzlich mit DPAPI an das Benutzerkonto gebunden.

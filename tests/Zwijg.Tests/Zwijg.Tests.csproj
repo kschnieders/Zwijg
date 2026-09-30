@@ -24,4 +24,8 @@
     <ProjectReference Include="..\..\src\Zwijg.Gateway\Zwijg.Gateway.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

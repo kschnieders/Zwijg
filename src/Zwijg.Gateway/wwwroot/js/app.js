@@ -1092,12 +1092,16 @@ async function checkDocument() {
   form.append("file", doc.file);
   ["docReport", "docAsk", "docPreviewCard"].forEach(id => $(id).hidden = true);
   $("docResult").innerHTML = "";
-  $("docStatus").innerHTML = `<div class="doc-busy"><span class="typing"><i></i><i></i><i></i></span>Dokument wird geprüft...</div>`;
+  $("docStatus").innerHTML = `<div class="doc-busy"><span class="typing"><i></i><i></i><i></i></span><span id="docBusyText">Dokument wird geprüft...</span></div>`;
+  const slow = setTimeout(() => {
+    if ($("docBusyText")) $("docBusyText").textContent = "Wird geprüft. Bei Scans läuft die Texterkennung, das dauert pro Seite ein paar Sekunden.";
+  }, 2500);
 
   let r;
   try {
     r = await api("POST", "/v1/documents/check", form);
   } catch (e) {
+    clearTimeout(slow);
     const scanned = e.data?.scanned;
     $("docStatus").innerHTML = `<div class="doc-verdict ${scanned ? "warn" : "bad"}">${icon(scanned ? "alert" : "x")}
       <div><strong>${scanned ? "Eingescanntes Dokument" : "Konnte nicht geprüft werden"}</strong><div class="muted small">${esc(e.message)}</div></div></div>`;
@@ -1105,6 +1109,7 @@ async function checkDocument() {
     return;
   }
 
+  clearTimeout(slow);
   doc.check = r;
   $("docStatus").innerHTML = "";
   $("docReset").hidden = false;
@@ -1121,6 +1126,9 @@ function renderDocumentCheck(r) {
   } else if (r.hiddenText || r.invisibleChars) {
     verdict = `<div class="doc-verdict warn">${icon("alert")}<div><strong>Auffällig, aber nutzbar</strong>
       <div class="muted small">Versteckte Inhalte gefunden. Sie werden entfernt, die KI sieht nur den sichtbaren Text.</div></div></div>`;
+  } else if (r.ocr) {
+    verdict = `<div class="doc-verdict ok">${icon("check")}<div><strong>Per Texterkennung gelesen</strong>
+      <div class="muted small">Keine eingeschleusten Anweisungen. Bitte rechts kurz prüfen, ob alle Namen ersetzt wurden, bei Scans kommen Lesefehler vor.</div></div></div>`;
   } else {
     verdict = `<div class="doc-verdict ok">${icon("check")}<div><strong>Keine Auffälligkeiten</strong>
       <div class="muted small">Kein versteckter Text, keine eingeschleusten Anweisungen.</div></div></div>`;
@@ -1131,7 +1139,7 @@ function renderDocumentCheck(r) {
   const fact = (label, value) => `<div class="fact"><dt>${label}</dt><dd>${value}</dd></div>`;
   $("docFacts").innerHTML =
     fact("Datei", esc(r.fileName)) +
-    fact("Umfang", `${r.pages} ${r.pages === 1 ? "Seite" : "Seiten"}, ${r.characters.toLocaleString("de-DE")} Zeichen`) +
+    fact("Umfang", `${r.pages} ${r.pages === 1 ? "Seite" : "Seiten"}, ${r.characters.toLocaleString("de-DE")} Zeichen${r.ocr ? ", per Texterkennung" : ""}`) +
     fact("Geschützte Werte", found ? `${found} ersetzt` : "keine gefunden") +
     fact("Geht an", r.route === "Local" ? `${icon("lock", "ico inline")}lokales Modell` : `${icon("cloud", "ico inline")}Cloud`);
 
@@ -1643,8 +1651,45 @@ $("ruleTabs").addEventListener("click", e => {
   if (b) showRuleTab(b.dataset.tab);
 });
 
+// Texterkennung: Einstellungen und Status, ob Tesseract gefunden wurde
+async function loadOcr() {
+  $("ocrStatus").innerHTML = `<div class="doc-busy"><span class="typing"><i></i><i></i><i></i></span>Tesseract wird gesucht ...</div>`;
+  const r = await api("GET", "/admin/ocr");
+  const o = r.settings, s = r.status;
+  $("ocrEnabled").checked = o.enabled;
+  $("ocrPath").value = o.tesseractPath || "";
+  $("ocrTessdata").value = o.tessdataDir || "";
+  $("ocrLangs").value = o.languages;
+  $("ocrPages").value = o.maxPages;
+
+  const guide = `<a href="https://github.com/kschnieders/zwijg/blob/main/docs/texterkennung.md" target="_blank" rel="noopener">Anleitung</a>`;
+  $("ocrStatus").innerHTML = s.available
+    ? `<div class="doc-verdict ok">${icon("check")}<div><strong>Bereit</strong>
+        <div class="muted small">${esc(s.version || "Tesseract")}, Sprachen: ${esc(s.languages.join(", "))}</div></div></div>`
+    : `<div class="doc-verdict warn">${icon("alert")}<div><strong>${esc(s.problem || "Nicht bereit")}</strong>
+        <div class="muted small">Ohne Texterkennung werden Scans abgelehnt. Wie man Tesseract installiert, steht in der ${guide}.${
+          s.languages?.length ? ` Gefundene Sprachen: ${esc(s.languages.join(", "))}.` : ""}</div></div></div>`;
+}
+
+$("ocrRecheck").addEventListener("click", () => loadOcr().catch(err => toast(err.message, true)));
+
+$("ocrSave").addEventListener("click", async () => {
+  try {
+    await api("PUT", "/admin/ocr", {
+      enabled: $("ocrEnabled").checked,
+      tesseractPath: $("ocrPath").value,
+      tessdataDir: $("ocrTessdata").value,
+      languages: $("ocrLangs").value || "deu+eng",
+      maxPages: Number($("ocrPages").value) || 20,
+    });
+    toast("Texterkennung gespeichert");
+    await loadOcr();
+  } catch (err) { toast(err.message, true); }
+});
+
 async function loadRules() {
   state.settings = await api("GET", "/admin/settings");
+  loadOcr().catch(err => toast(err.message, true));
   const s = state.settings;
   const p = s.policy;
 

@@ -65,9 +65,10 @@ public class DocumentCheckTests(GatewayFactory factory) : IClassFixture<GatewayF
 
         var (status, body) = await Check(builder.Build(), "scan.pdf", "application/pdf");
 
+        // Leere Seite: mit Tesseract findet die Texterkennung nichts, ohne gibt es den Hinweis zum Einrichten
         Assert.Equal(HttpStatusCode.UnprocessableEntity, status);
         Assert.True(body["scanned"]!.GetValue<bool>());
-        Assert.Contains("OCR", body["error"]!.GetValue<string>());
+        Assert.Contains("Texterkennung", body["error"]!.GetValue<string>());
     }
 
     [Fact]
