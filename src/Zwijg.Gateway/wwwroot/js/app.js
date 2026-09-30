@@ -46,7 +46,7 @@ const PRESETS = {
   },
 };
 
-const ACTIONS = { chat: "Chat", document: "Dokument", admin: "Verwaltung", login: "Anmeldung" };
+const ACTIONS = { chat: "Chat", document: "Dokument", protect: "Text schützen", admin: "Verwaltung", login: "Anmeldung" };
 const SENSITIVITY = { None: "keine", Low: "niedrig", Medium: "mittel", High: "hoch" };
 const MODES = { Auto: "Automatisch", LocalOnly: "Nur lokal", CloudOnly: "Nur Cloud" };
 const LEVELS = { Info: "Info", Warning: "Hinweis", Critical: "Wichtig" };
@@ -278,6 +278,7 @@ function logout(message) {
   state.conversationId = null;
   state.secrets = [];
   renderSecrets();
+  resetProtect();
   state.convs = [];
   state.convLoaded = false;
   $("convList").innerHTML = "";
@@ -475,6 +476,100 @@ $("updHowto").addEventListener("click", async e => {
   toast("Befehl kopiert");
 });
 
+// Text schützen: die Zuordnung Platzhalter zu echtem Wert lebt nur hier im Speicher, nie im Browserspeicher
+const protect = { mapping: [], protectedText: "", restoredText: "" };
+
+const PLACEHOLDER = /\[\s*([A-Z]+)_(\d+)\s*\]/g;
+
+async function runProtect() {
+  const text = $("protectInput").value;
+  if (!text.trim()) return;
+  $("protectRun").disabled = true;
+  $("protectStatus").textContent = "wird geschützt ...";
+  try {
+    const r = await api("POST", "/v1/protect", { text, known: protect.mapping });
+    protect.mapping = r.mapping;
+    protect.protectedText = r.protected;
+    $("protectOutput").innerHTML = esc(r.protected).replace(/\[[A-Z]+_\d+\]/g, m => `<mark>${m}</mark>`);
+    $("protectCopy").disabled = false;
+
+    const chips = Object.entries(r.entities).map(([k, v]) => chip(`${k} × ${v}`));
+    if (!chips.length) chips.push(chip("keine Personendaten erkannt", "ok", "check"));
+    if (r.healthTerms?.length) chips.push(chip("Gesundheitsdaten", "amber", "steth"));
+    $("protectChips").innerHTML = chips.join("");
+    $("protectStatus").textContent = "";
+    renderProtectMap();
+    restoreAnswer();
+  } catch (err) {
+    $("protectStatus").textContent = "";
+    $("protectOutput").innerHTML = `<div class="doc-verdict bad">${icon("alert")}<div><strong>Nicht geschützt</strong><span>${esc(err.message)}</span></div></div>`;
+    $("protectCopy").disabled = true;
+    $("protectChips").innerHTML = "";
+    protect.protectedText = "";
+  } finally {
+    $("protectRun").disabled = false;
+  }
+}
+
+// Platzhalter in der Antwort durch die echten Werte ersetzen, tolerant bei Leerzeichen wie "[ NAME_1 ]"
+function restoreAnswer() {
+  const text = $("restoreInput").value;
+  if (!text.trim()) {
+    $("restoreOutput").innerHTML = '<span class="muted">Hier erscheint die Antwort mit den echten Daten.</span>';
+    $("restoreCopy").disabled = true;
+    $("restoreStatus").textContent = "";
+    protect.restoredText = "";
+    return;
+  }
+
+  const byPlaceholder = new Map(protect.mapping.map(e => [e.placeholder, e.value]));
+  let unknown = 0;
+  protect.restoredText = text.replace(PLACEHOLDER, (m, label, n) => byPlaceholder.get(`[${label}_${n}]`) ?? m);
+  $("restoreOutput").innerHTML = esc(text).replace(PLACEHOLDER, (m, label, n) => {
+    const value = byPlaceholder.get(`[${label}_${n}]`);
+    if (value === undefined) { unknown++; return `<mark class="unknown" title="Unbekannter Platzhalter">${m}</mark>`; }
+    return `<span class="restored" title="${esc(m)}">${esc(value)}</span>`;
+  });
+  $("restoreStatus").textContent = unknown ? `${unknown} Platzhalter unbekannt. Stammt die Antwort aus dieser Sitzung?` : "";
+  $("restoreCopy").disabled = false;
+}
+
+function renderProtectMap() {
+  $("protectMapBox").hidden = protect.mapping.length === 0;
+  $("protectMapCount").textContent = protect.mapping.length;
+  $("protectMap").innerHTML = protect.mapping.map(e =>
+    `<div class="protect-map-row"><code>${esc(e.placeholder)}</code><span>${esc(e.value)}</span></div>`).join("");
+}
+
+function resetProtect() {
+  protect.mapping = [];
+  protect.protectedText = "";
+  protect.restoredText = "";
+  $("protectInput").value = "";
+  $("restoreInput").value = "";
+  $("protectOutput").innerHTML = '<span class="muted">Hier erscheint der Text mit Platzhaltern.</span>';
+  $("protectChips").innerHTML = "";
+  $("protectCopy").disabled = true;
+  renderProtectMap();
+  restoreAnswer();
+}
+
+async function copyText(text, label) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(label);
+  } catch {
+    toast("Kopieren ging nicht, bitte von Hand markieren", true);
+  }
+}
+
+$("protectRun").addEventListener("click", runProtect);
+$("protectInput").addEventListener("keydown", e => { if (e.ctrlKey && e.key === "Enter") runProtect(); });
+$("restoreInput").addEventListener("input", restoreAnswer);
+$("protectCopy").addEventListener("click", () => copyText(protect.protectedText, "Geschützte Fassung kopiert"));
+$("restoreCopy").addEventListener("click", () => copyText(protect.restoredText, "Antwort kopiert"));
+$("protectReset").addEventListener("click", resetProtect);
+
 // Über Zwijg: Ersteller, Quellcode und Lizenzen. Geht auch ohne Anmeldung.
 async function openAbout() {
   $("aboutDialog").showModal();
@@ -551,6 +646,8 @@ function applyMe() {
   document.querySelectorAll(".admin-only").forEach(el => el.hidden = !me.admin);
 
   $("navDoc").hidden = !me.canUseDocuments;
+  // Ein kopierter Text verlässt die Praxis, das gibt es nur für Leute, die in die Cloud dürfen
+  $("navProtect").hidden = !me.cloudAllowed;
   $("previewCard").hidden = !me.showPreview;
   $("chatLayout").classList.toggle("solo", !me.showPreview);
   $("routeCloud").hidden = !me.cloudAllowed;
@@ -623,6 +720,7 @@ $("banners").addEventListener("click", async e => {
 
 function show(view) {
   if (view === "doc" && !state.me.canUseDocuments) view = "chat";
+  if (view === "protect" && !state.me.cloudAllowed) view = "chat";
   if (!document.getElementById("view-" + view) || (!state.me.admin && document.querySelector(`.nav button[data-view="${view}"]`)?.classList.contains("admin-only"))) view = "chat";
   history.replaceState(null, "", "#" + view);
   document.querySelectorAll(".nav button").forEach(b => b.classList.toggle("active", b.dataset.view === view));
@@ -2600,6 +2698,7 @@ function statusBadge(r) {
 function routeTag(r) {
   if (r.route === "Local") return `<span class="route-tag local">${icon("lock")}lokal</span>`;
   if (r.route === "Cloud") return `<span class="route-tag cloud">${icon("cloud")}Cloud</span>`;
+  if (r.route === "External") return `<span class="route-tag external">${icon("copy")}extern</span>`;
   return '<span class="muted">keins</span>';
 }
 

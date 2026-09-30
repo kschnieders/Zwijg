@@ -296,6 +296,7 @@ public static class Endpoints
         app.MapAdminSettings();
         app.MapAdminDashboard();
         app.MapUpdates();
+        app.MapProtect();
         app.MapAdminRules();
         app.MapHistory();
         app.MapAuth();
@@ -381,7 +382,7 @@ public static class Endpoints
         e.Blocked ? AuditStatus.Blocked
         : e.Reason?.StartsWith("Anbieterfehler") == true || e.Reason?.StartsWith("Kein Anbieter") == true ? AuditStatus.Error
         : e.Reason?.StartsWith("Warnung") == true ? AuditStatus.Warning
-        : e.Action is "chat" or "document" ? AuditStatus.Ok
+        : e.Action is "chat" or "document" or "protect" ? AuditStatus.Ok
         : null;
 
     private static object View(AuditEntry e) => new

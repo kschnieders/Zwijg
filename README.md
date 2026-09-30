@@ -96,6 +96,7 @@ Die genaue Adresse steht beim Start auch in der Konsole ("Now listening on").
 
 - **Chat**: normal chatten, daneben sieht man live, was die KI zu sehen bekommt. Eigene geheime Stellen, etwa ein Projektname oder eine Kontonummer, lassen sich im Eingabefeld markieren und mit "Verstecken" (oder Strg+Umschalt+H) für die ganze Unterhaltung durch einen Platzhalter ersetzen. Die letzten Unterhaltungen stehen in der Seitenleiste, mit Anpinnen, Umbenennen und Löschen (auch per Rechtsklick). Sie liegen verschlüsselt, sind nur für die Person selbst lesbar und werden nach einstellbarer Zeit gelöscht. Die Titel in der Seitenleiste enthalten keine Patientendaten.
 - **Dokument**: PDF oder Text hochladen, erst prüfen (versteckter Text, Manipulationsversuche, erkannte Patientendaten, geschützte Fassung zum Ansehen und Kopieren), dann befragen
+- **Text schützen**: für Programme, die sich nicht anbinden lassen. Text einfügen, geschützte Fassung kopieren und dort einfügen, die Antwort wieder einfügen und mit den echten Daten zurückbekommen. Die Zuordnung bleibt nur im Browser. Es gelten dieselben Regeln wie für die Cloud.
 - **Übersicht** (Admin): Anfragen, geschützte Werte, blockierte Versuche und Verlauf der letzten 14 Tage
 - **Verbindungen** (Admin): Claude, ChatGPT, Mistral, Gemini, Groq, Ollama, LM Studio oder ein eigener Server. Mit Test und Modellliste.
 - **Regeln** (Admin):
