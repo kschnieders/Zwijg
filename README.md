@@ -43,12 +43,16 @@ Für die Aufnahme lieferte ein Demo Modell eine feste Antwort. Erkennung, Platzh
 - **Protokoll**: wer hat wann was gefragt, nur pseudonymisiert gespeichert, mit Hashkette gegen nachträgliche Änderungen
 - **Lokal oder Cloud**: sensible Anfragen gehen an ein lokales Modell (z.B. Ollama), harmlose dürfen in die Cloud
 
+## Anleitungen
+
+Kurze Anleitungen für den Alltag stehen unter [docs](docs/README.md): erste Schritte, lokale KI einbinden, Cloud Anbieter, im Chat arbeiten, Schutz anpassen, andere Programme anbinden und Betrieb in der Praxis.
+
 ## Herunterladen
 
 Unter [Releases](https://github.com/kschnieders/zwijg/releases/latest) gibt es für jede Version:
 
 - `zwijg-x.y.z-win-x64.zip`: für Windows. Entpacken, `Zwijg.Gateway.exe` starten und http://localhost:5000 öffnen
-- `zwijg-x.y.z-linux-x64.zip`: für Linux. Entpacken, `./Zwijg.Gateway` starten
+- `zwijg-x.y.z-linux-x64.zip`: für Linux. Entpacken, `./Zwijg.Gateway` starten und http://localhost:5000 öffnen
 - `zwijg-x.y.z-docker.zip`: `docker-compose.yml` für Zwijg mit Ollama, siehe unten
 
 .NET muss dafür nicht installiert sein. Beim ersten Start steht ein Startschlüssel für den Admin in der Konsole.
@@ -80,7 +84,15 @@ Die API ist OpenAI kompatibel. Bestehende Tools müssen nur die Base URL auf Zwi
 
 ## Weboberfläche
 
-Nach dem Start http://localhost:5247 öffnen und mit dem Startschlüssel aus der Konsole anmelden.
+Nach dem Start die Adresse im Browser öffnen und mit dem Startschlüssel aus der Konsole anmelden. Welche Adresse, hängt davon ab, wie Zwijg gestartet wurde:
+
+| Gestartet als | Adresse |
+|---|---|
+| Fertiges Paket für Windows oder Linux | http://localhost:5000 |
+| Aus dem Quellcode mit `dotnet run` | http://localhost:5247 |
+| Docker | http://localhost:8080 |
+
+Die genaue Adresse steht beim Start auch in der Konsole ("Now listening on").
 
 - **Chat**: normal chatten, daneben sieht man live, was die KI zu sehen bekommt. Eigene geheime Stellen, etwa ein Projektname oder eine Kontonummer, lassen sich im Eingabefeld markieren und mit "Verstecken" (oder Strg+Umschalt+H) für die ganze Unterhaltung durch einen Platzhalter ersetzen. Die letzten Unterhaltungen stehen in der Seitenleiste, mit Anpinnen, Umbenennen und Löschen (auch per Rechtsklick). Sie liegen verschlüsselt, sind nur für die Person selbst lesbar und werden nach einstellbarer Zeit gelöscht. Die Titel in der Seitenleiste enthalten keine Patientendaten.
 - **Dokument**: PDF oder Text hochladen, erst prüfen (versteckter Text, Manipulationsversuche, erkannte Patientendaten, geschützte Fassung zum Ansehen und Kopieren), dann befragen
@@ -182,10 +194,6 @@ Bei jedem Push prüft GitHub automatisch:
 - **CodeQL**: Sicherheitsanalyse des Codes, zusätzlich einmal pro Woche
 
 Dependabot meldet sich einmal pro Woche per Pull Request, wenn es neue Versionen von Paketen, Actions oder dem Docker Image gibt.
-
-## Neue Version veröffentlichen
-
-Auf GitHub unter Actions den Workflow **Release** wählen, auf **Run workflow** klicken und die Version eingeben, zum Beispiel `1.0.0`. Die Action testet, baut die Pakete für Windows, Linux und Docker, legt das Release an und lädt das Docker Image nach `ghcr.io` hoch.
 
 ## Grenzen
 
