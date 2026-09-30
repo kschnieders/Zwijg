@@ -31,6 +31,8 @@ public sealed class Pseudonymizer(IEnumerable<IPiiDetector> detectors, Func<IRea
 
         foreach (var text in texts)
         {
+            map.Reserve(text);
+
             var found = new List<PiiMatch>();
             foreach (var detector in _detectors)
                 found.AddRange(await detector.DetectAsync(text, ct));
