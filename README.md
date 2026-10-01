@@ -81,7 +81,7 @@ curl http://localhost:5247/v1/chat/completions \
   -d '{"model":"auto","messages":[{"role":"user","content":"Herr Max Mustermann, geb. 12.03.1980, hat Fieber"}]}'
 ```
 
-Die API ist OpenAI kompatibel. Bestehende Tools müssen nur die Base URL auf Zwijg umstellen.
+Die API ist OpenAI kompatibel. Bestehende Tools müssen nur die Base URL auf Zwijg umstellen. Function Calling geht nicht, siehe [Andere Programme anbinden](docs/programme-anbinden.md).
 
 ## Weboberfläche
 
