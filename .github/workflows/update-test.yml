@@ -1,0 +1,48 @@
+name: Update testen
+
+# Spielt update.ps1 und update.sh mit echten Paketen durch: Update, kaputtes Paket mit Rückkehr, Zurück von Hand.
+# Läuft nur, wenn sich die Skripte oder dieser Test ändern, und ist deshalb kein Pflicht-Check.
+on:
+  pull_request:
+    paths:
+      - "scripts/update.*"
+      - "tests/update/**"
+      - ".github/workflows/update-test.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Programm bauen
+        run: dotnet publish src/Zwijg.Gateway -c Release -r ${{ matrix.rid }} --self-contained -o programm
+
+      - name: Update testen (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: .\tests\update\test-update.ps1 -Programm programm -Skript scripts\update.ps1
+
+      - name: Update testen (Linux)
+        if: runner.os == 'Linux'
+        run: bash tests/update/test-update.sh programm scripts/update.sh

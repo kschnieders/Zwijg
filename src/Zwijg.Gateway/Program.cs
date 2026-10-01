@@ -122,6 +122,13 @@ DataDirectoryCheck.EnsureWritable(
     [dataDir, KeyDirectory(gateway), Path.GetDirectoryName(Path.GetFullPath(gateway.Audit.DatabasePath))!],
     [gateway.SettingsPath, Path.Combine(dataDir, "history.db"), gateway.Audit.DatabasePath, gateway.Audit.DatabasePath + ".key", gateway.Audit.DatabasePath + ".kopf"]);
 
+// Neue Version: Daten sichern, bevor Einstellungen und Datenbanken umgestellt werden. Das Update Skript sichert
+// beim Probestart schon selbst und schaltet das hier mit Zwijg:SkipUpdateSnapshot ab.
+UpdateSnapshot.CreateIfVersionChanged(dataDir, Endpoints.Version,
+    [gateway.Audit.DatabasePath, gateway.Audit.DatabasePath + ".key", gateway.Audit.DatabasePath + ".kopf"],
+    app.Configuration.GetValue<bool>("Zwijg:SkipUpdateSnapshot"),
+    app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Zwijg.Update"));
+
 // Zertifikat für die Schlüssel gleich laden, ein falscher Pfad oder ein falsches Passwort verhindert den Start.
 // Vor allem anderen, damit schon die ersten neuen Daten mit einem geschützten Schlüssel verschlüsselt werden.
 KeyRingCertificate.EnsureProtectedDefaultKey(app.Services);

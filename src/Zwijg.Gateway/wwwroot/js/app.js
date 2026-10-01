@@ -408,22 +408,24 @@ const UPDATE_STEPS = {
   windows: {
     title: "Windows Paket",
     steps: [
-      ["Im Ordner von Zwijg PowerShell öffnen und ausführen. Das Skript beendet Zwijg, sichert den data Ordner und spielt die neue Version ein:", "powershell -ExecutionPolicy Bypass -File update.ps1"],
+      ["Im Ordner von Zwijg PowerShell öffnen und ausführen. Das Skript beendet Zwijg, sichert Programm und Daten und startet die neue Version zur Probe. Klappt das nicht, stellt es den alten Stand wieder her:", "powershell -ExecutionPolicy Bypass -File update.ps1"],
       ["Danach Zwijg wieder starten:", ".\\Zwijg.Gateway.exe"],
+      ["Macht die neue Version später Probleme, Zwijg beenden und zurück zum Stand vor dem Update:", "powershell -ExecutionPolicy Bypass -File update.ps1 -Zurueck"],
     ],
   },
   linux: {
     title: "Linux Paket",
     steps: [
       ["Zwijg beenden, zum Beispiel wenn es als Dienst läuft:", "sudo systemctl stop zwijg"],
-      ["Im Ordner von Zwijg ausführen. Das Skript sichert den data Ordner und spielt die neue Version ein:", "./update.sh"],
+      ["Im Ordner von Zwijg ausführen. Das Skript sichert Programm und Daten und startet die neue Version zur Probe. Klappt das nicht, stellt es den alten Stand wieder her:", "./update.sh"],
       ["Danach wieder starten:", "sudo systemctl start zwijg"],
+      ["Macht die neue Version später Probleme, Zwijg beenden und zurück zum Stand vor dem Update:", "./update.sh --zurueck"],
     ],
   },
   docker: {
     title: "Docker",
     steps: [
-      ["Im Ordner mit der docker-compose.yml ausführen. Die Daten liegen im Volume und bleiben erhalten:", "docker compose pull && docker compose up -d"],
+      ["Im Ordner mit der docker-compose.yml ausführen. Die Daten liegen im Volume und bleiben erhalten. Vor dem Umstellen sichert Zwijg sie selbst nach data/sicherungen, wie es zurückgeht, steht in der Anleitung Betrieb:", "docker compose pull && docker compose up -d"],
       ["Nur einmal nötig, wenn Zwijg danach meldet, dass es /app/data nicht ändern darf (älteres Volume, das noch root gehört). Danach wieder docker compose up -d:", "docker compose run --rm --no-deps --user root --entrypoint chown zwijg -R 1654 /app/data"],
     ],
   },
