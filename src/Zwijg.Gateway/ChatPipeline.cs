@@ -115,6 +115,15 @@ public sealed class ChatPipeline(
                 ruleHits.AddRange(RuleEngine.Find(cleaned[i], o.ProtectionRules, a => a != RuleAction.Replace));
         }
 
+        // Zu langsame Ersetzen-Regel: Der Wert steht womöglich noch im Klartext, also nicht in die Cloud
+        var slowReplaceHits = cleaned
+            .SelectMany(t => RuleEngine.Find(t, o.ProtectionRules, a => a == RuleAction.Replace))
+            .Where(h => h.TimedOut).ToList();
+        var slowReplace = string.Join(", ", slowReplaceHits.Select(h => h.Rule.Name).Distinct());
+        var slow = ruleHits.Where(h => h.TimedOut).Concat(slowReplaceHits).Select(h => h.Rule.Name).Distinct().ToList();
+        if (slow.Count > 0)
+            logger.LogWarning("Schutzregel zu langsam, gilt als getroffen: {Rules}", string.Join(", ", slow));
+
         var blockedBy = ruleHits.FirstOrDefault(h => h.Rule.Action == RuleAction.Block)?.Rule;
         if (blockedBy != null)
         {
@@ -133,7 +142,9 @@ public sealed class ChatPipeline(
 
             // Den gefundenen Text nicht zurückgeben, er könnte genau das Geheimnis sein
             return ChatOutcome.Error(400,
-                string.IsNullOrWhiteSpace(blockedBy.Message)
+                string.IsNullOrWhiteSpace(blockedBy.Message) && ruleHits.First(h => h.Rule == blockedBy).TimedOut
+                    ? $"Anfrage blockiert: Die Praxisregel \"{blockedBy.Name}\" konnte nicht rechtzeitig geprüft werden"
+                    : string.IsNullOrWhiteSpace(blockedBy.Message)
                     ? $"Anfrage blockiert: verstößt gegen die Praxisregel \"{blockedBy.Name}\""
                     : blockedBy.Message,
                 new { findings = new[] { new { rule = blockedBy.Name, snippet = "Schutzregel der Praxis" } } });
@@ -147,6 +158,37 @@ public sealed class ChatPipeline(
         // 4. Ziel wählen. Wenn lokal nötig aber nicht da ist, gibt es keinen Ausweg in die Cloud.
         requestedRoute ??= ParseModelPrefix(request["model"]?.GetValue<string>(), out _);
         var decision = routing.Decide(map.MaxSensitivity, hasDocument, requestedRoute);
+
+        // Bleibt die Anfrage ohnehin lokal, muss "Nur Cloud" nicht blockieren
+        var forcedLocal = !user.CloudAllowed ? "Benutzer darf nur lokal"
+            : localOnlyRules.Length > 0 ? "Schutzregel: " + localOnlyRules
+            : slowReplace.Length > 0 ? "Schutzregel zu langsam: " + slowReplace
+            : null;
+        if (decision.Blocked && forcedLocal != null)
+            decision = new RouteDecision(RouteTarget.Local, forcedLocal);
+
+        if (decision.Blocked)
+        {
+            await audit.WriteAsync(new AuditEntry
+            {
+                User = user.Name,
+                Action = action,
+                Sensitivity = map.MaxSensitivity.ToString(),
+                Entities = map.Summary(),
+                InjectionScore = injection.Score,
+                Blocked = true,
+                Reason = "Nur Cloud, aber " + decision.Reason,
+                Prompt = loggedPrompt,
+                DurationMs = watch.ElapsedMilliseconds
+            }, ct);
+
+            return ChatOutcome.Error(403,
+                $"Anfrage blockiert: Sie müsste in der Praxis bleiben ({decision.Reason}), die Weiterleitung steht aber auf Nur Cloud. " +
+                "Ein Admin kann das unter Regeln, Weiterleitung ändern.");
+        }
+
+        if (decision.Route == RouteTarget.Cloud && slowReplace.Length > 0)
+            decision = new RouteDecision(RouteTarget.Local, "Schutzregel zu langsam: " + slowReplace);
 
         if (decision.Route == RouteTarget.Cloud && !user.CloudAllowed)
             decision = new RouteDecision(RouteTarget.Local, "Benutzer darf nur lokal");
@@ -242,6 +284,7 @@ public sealed class ChatPipeline(
         var warnings = new List<string>();
         if (suspicious) warnings.Add("Warnung Prompt Injection: " + injection.Reasons);
         if (warnRules.Length > 0) warnings.Add("Warnung Schutzregel: " + warnRules);
+        if (slowReplace.Length > 0) warnings.Add("Warnung Schutzregel zu langsam: " + slowReplace);
         if (languageNote != null) warnings.Add("Warnung " + languageNote);
 
         await audit.WriteAsync(new AuditEntry

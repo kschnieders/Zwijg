@@ -27,27 +27,36 @@ public sealed class RoutingOptions
     public bool DocumentsLocalOnly { get; set; } = true;
 }
 
-public sealed record RouteDecision(RouteTarget Route, string Reason);
+// Blocked: Die Anfrage müsste lokal bleiben, darf laut Einstellung aber nur in die Cloud
+public sealed record RouteDecision(RouteTarget Route, string Reason, bool Blocked = false);
 
 public sealed class RoutingPolicy(RoutingOptions options)
 {
     public RouteDecision Decide(Sensitivity sensitivity, bool hasDocument, RouteTarget? requested = null)
     {
-        if (options.Mode == RoutingMode.LocalOnly)
+        // Unbekannte Werte aus einer alten Einstellungsdatei: im Zweifel lokal
+        if (options.Mode == RoutingMode.LocalOnly || !Enum.IsDefined(options.Mode))
             return new(RouteTarget.Local, "nur lokal erlaubt");
 
-        if (options.Mode == RoutingMode.CloudOnly)
-            return new(RouteTarget.Cloud, "nur Cloud konfiguriert");
+        var cloudMax = Enum.IsDefined(options.CloudMaxSensitivity) ? options.CloudMaxSensitivity : Sensitivity.None;
+        var mustStayLocal = hasDocument && options.DocumentsLocalOnly ? "Dokumente bleiben lokal"
+            : sensitivity > cloudMax ? $"Sensibilität {sensitivity}"
+            : null;
 
-        if (hasDocument && options.DocumentsLocalOnly)
-            return new(RouteTarget.Local, "Dokumente bleiben lokal");
-
-        if (sensitivity > options.CloudMaxSensitivity)
-            return new(RouteTarget.Local, $"Sensibilität {sensitivity}");
+        if (mustStayLocal != null)
+        {
+            // "Nur Cloud" heißt: kein lokales Modell. Dann lieber blockieren als zu viel in die Cloud schicken.
+            if (options.Mode == RoutingMode.CloudOnly && requested != RouteTarget.Local)
+                return new(RouteTarget.Local, mustStayLocal, Blocked: true);
+            return new(RouteTarget.Local, mustStayLocal);
+        }
 
         // Wunsch des Clients: lokal geht immer, Cloud nur wenn die Regeln es erlauben.
         if (requested == RouteTarget.Local)
             return new(RouteTarget.Local, "vom Client gewünscht");
+
+        if (options.Mode == RoutingMode.CloudOnly)
+            return new(RouteTarget.Cloud, "nur Cloud konfiguriert");
 
         return new(RouteTarget.Cloud, $"Sensibilität {sensitivity}");
     }

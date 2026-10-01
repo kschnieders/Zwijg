@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Zwijg.Core.Pseudonymization;
 
@@ -39,7 +40,8 @@ public sealed class ProtectionRule
     public bool Enabled { get; set; } = true;
 }
 
-public sealed record RuleHit(ProtectionRule Rule, int Start, int Length, string Value);
+// TimedOut: Das Muster war zu langsam. Dann zählt die Regel als getroffen, ohne Fundstelle.
+public sealed record RuleHit(ProtectionRule Rule, int Start, int Length, string Value, bool TimedOut = false);
 
 public static class RuleEngine
 {
@@ -47,6 +49,10 @@ public static class RuleEngine
     private static readonly TimeSpan Timeout = TimeSpan.FromMilliseconds(250);
 
     private static readonly ConcurrentDictionary<string, Regex> Cache = new();
+
+    // Pseudonymisierung und Weiterleitung prüfen denselben Text. Ein Muster, das sich daran schon
+    // festgefressen hat, nicht noch einmal laufen lassen. Der Eintrag verschwindet mit dem Text.
+    private static readonly ConditionalWeakTable<string, ConcurrentDictionary<Regex, byte>> SlowOn = new();
 
     public static readonly Regex LabelPattern = new("^[A-Z]{2,20}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
@@ -103,9 +109,17 @@ public static class RuleEngine
             if (!rule.Enabled || (which != null && !which(rule.Action)))
                 continue;
 
+            Regex? regex = null;
             try
             {
-                foreach (Match m in Build(rule).Matches(text))
+                regex = Build(rule);
+                if (SlowOn.TryGetValue(text, out var known) && known.ContainsKey(regex))
+                {
+                    hits.Add(new RuleHit(rule, 0, 0, "", TimedOut: true));
+                    continue;
+                }
+
+                foreach (Match m in regex.Matches(text))
                 {
                     if (m.Length > 0)
                         hits.Add(new RuleHit(rule, m.Index, m.Length, m.Value));
@@ -113,7 +127,9 @@ public static class RuleEngine
             }
             catch (RegexMatchTimeoutException)
             {
-                // Zu langsames Muster: lieber übergehen als den Server blockieren
+                // Zu langsames Muster: Server nicht blockieren, aber die Regel gilt als getroffen
+                hits.Add(new RuleHit(rule, 0, 0, "", TimedOut: true));
+                SlowOn.GetOrCreateValue(text)[regex!] = 0;
             }
             catch (ArgumentException)
             {
@@ -130,7 +146,9 @@ public sealed class CustomRuleDetector(Func<IReadOnlyList<ProtectionRule>> rules
 {
     public Task<IReadOnlyList<PiiMatch>> DetectAsync(string text, CancellationToken ct = default)
     {
+        // Zu langsame Regeln haben keine Fundstelle, die Weiterleitung hält die Anfrage dann lokal
         var matches = RuleEngine.Find(text, rules(), a => a == RuleAction.Replace)
+            .Where(h => !h.TimedOut)
             .Select(h => new PiiMatch(EntityType.Custom, h.Start, h.Length, h.Value,
                 string.IsNullOrWhiteSpace(h.Rule.Label) ? "EIGENE" : h.Rule.Label))
             .ToList();

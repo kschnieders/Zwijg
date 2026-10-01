@@ -73,6 +73,8 @@ public static class AdminRulesEndpoints
                 CaseSensitive = input.Rule.CaseSensitive, Action = input.Rule.Action, Enabled = true
             };
             var hits = RuleEngine.Find(input.Text ?? "", [probe]);
+            if (hits.Any(h => h.TimedOut))
+                return Results.BadRequest(new { error = "Das Muster ist für diesen Text zu langsam. Im Betrieb gilt die Regel dann als getroffen." });
             return Results.Ok(new { hits = hits.Select(h => new { h.Start, h.Length, h.Value }) });
         });
 
