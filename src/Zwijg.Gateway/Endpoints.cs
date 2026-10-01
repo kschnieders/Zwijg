@@ -80,7 +80,8 @@ public static class Endpoints
                 messages.Add(new ChatMessage("assistant", answer));
 
                 // Bei Vorlagen "Patientenabsage · Freitag, 02.10." statt des langen Anweisungstextes
-                var first = messages.First(m => m.Role == "user");
+                // Ohne Nutzernachricht, z.B. nur eine Systemanweisung, kommt der Titel aus der Antwort
+                var first = messages.FirstOrDefault(m => m.Role == "user") ?? messages[0];
                 var title = conversationId != null ? ""
                     : first.Display is { } display ? await HistoryEndpoints.SafeDisplayTitleAsync(display, pseudonymizer, ct, secrets)
                     : await HistoryEndpoints.SafeTitleAsync(first.Content, pseudonymizer, ct, secrets);

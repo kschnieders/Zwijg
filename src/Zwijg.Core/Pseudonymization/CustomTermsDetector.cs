@@ -58,7 +58,14 @@ public sealed class CustomTermsDetector(Func<(IReadOnlyCollection<string> Names,
         if (list.Count == 0)
             return null;
 
-        return new Regex(@"\b(?:" + string.Join("|", list.Select(Regex.Escape)) + @")\b",
-            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+        return new Regex(string.Join("|", list.Select(Bounded)), RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+    }
+
+    // Wortgrenze nur an Buchstaben oder Ziffern, sonst träfe "Halle (Saale)" nie. Wie bei den Schutzregeln.
+    private static string Bounded(string term)
+    {
+        var start = char.IsLetterOrDigit(term[0]) ? @"\b" : "";
+        var end = char.IsLetterOrDigit(term[^1]) ? @"\b" : "";
+        return start + Regex.Escape(term) + end;
     }
 }
