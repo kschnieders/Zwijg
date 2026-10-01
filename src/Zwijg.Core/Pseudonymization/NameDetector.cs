@@ -26,69 +26,70 @@ public sealed class NameDetector : IPiiDetector
         @"\b(?:Herrn?|Frau|Hr\.|Fr\.|Frl\.|Patient(?:in)?|Pat\.|Patientenname|Name|Nachname|Vorname|Geburtsname|" +
         @"Versicherte[rn]?|Mitglied|Betreuer(?:in)?|Bewohner(?:in)?|Klient(?:in)?|Familie|Fam\.|Hallo|Liebe[r]?|" +
         @"Eheleute|Ehepaar|geb\.|geborene[rn]?)" +
-        @"\s*:?\s+" + AfterContext,
-        Opts);
+        // Doppelpunkt oder Leerzeichen, nicht beides frei kombinierbar, sonst wird "Herr" + viele Leerzeichen quadratisch
+        @"(?:\s*:\s+|\s+)" + AfterContext,
+        Opts, RegexLimits.MatchTimeout);
 
     // "Herr und Frau Becker", "Frau und Herrn Becker"
     private static readonly Regex CouplePattern = new(
         @"\b(?:Herrn?|Frau)\s+und\s+(?:Herrn?|Frau)\s+" + AfterContext,
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     // Ohne Doppelpunkt, sonst wird bei "Vater: Herzinfarkt" die Krankheit zum Namen
     private static readonly Regex FamilyPattern = new(
         @"\b(?:Kind|Sohn|Tochter|Ehemann|Ehefrau|Mutter|Vater|Bruder|Schwester|Oma|Opa|Enkel(?:in)?|Angehörige[rn]?)" +
         @"\s+" + AfterContext,
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     private static readonly Regex DoctorPattern = new(
         $@"\b(?:(?:Dr|Prof|Dipl\.-Med)\.\s*(?:(?:med|dent|rer\. nat|phil)\.\s*)?)+(?<name>{Word}(?:\s+{Word})?)",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     // "Patienten: Meyer, Schulze und Nowak"
     private static readonly Regex LabelListPattern = new(
         $@"\b(?:Patienten|Patientinnen|Namen|Teilnehmer(?:innen)?|Anwesend|Besucher)\s*:\s*" +
         $@"(?<list>{Word}(?:\s*(?:,|;|/|&|\bund\b)\s*{Word})*)",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     // Terminlisten: "8:30 Kaminski", "10:15 Uhr Brinkhoff"
     private static readonly Regex TimePattern = new(
-        $@"(?<![\d:.])\d{{1,2}}[:.]\d{{2}}(?:\s*Uhr)?\s*[-\u2013:]?\s*(?<name>{Word})\b(?!-)",
-        Opts);
+        $@"(?<![\d:.])\d{{1,2}}[:.]\d{{2}}(?:\s*Uhr)?\s*(?:[-\u2013:]\s*)?(?<name>{Word})\b(?!-)",
+        Opts, RegexLimits.MatchTimeout);
 
     // Typische Endungen von Nachnamen, nur in Terminlisten genutzt
     private static readonly Regex SurnameEnding = new(
         @"(?:mann|ski|ska|sky|cki|cka|wicz|czyk|czak|enko|chuk|tschuk|owa|ova|ow|ov|ev|eva|oglu|oğlu|poulos|poulou|" +
         @"akis|idis|iadis|ović|ovic|ević|evic|ić|hoff|meier|meyer|maier|mayer|huber|bauer|brink|kamp|haus|horst)$",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     // "frau schmidt", "herr yilmaz": klein geschrieben nur, wenn der Name in einer Liste steht
     private static readonly Regex LowercasePattern = new(
         @"\b(?i:herrn?|frau|hr\.|fr\.)\s+(?<name>\p{Ll}{2,}(?:-\p{Ll}{2,})?)\b(?:\s+(?<second>\p{Ll}{2,}(?:-\p{Ll}{2,})?)\b)?",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     // "MUSTERMANN, Max" überall, "Mustermann, Max" nur am Zeilenanfang oder nach einem Doppelpunkt,
     // sonst würde bei "Migräne, Anna klagt..." die Krankheit zum Nachnamen
     private static readonly Regex LastFirstPattern = new(
         $@"(?:(?<=^|[:;(]\s*)(?<last>{Word})|\b(?<last>\p{{Lu}}{{3,}}(?:-\p{{Lu}}{{3,}})?)),\s*(?<first>{Word})\b(?!-)",
-        Opts | RegexOptions.Multiline);
+        Opts | RegexOptions.Multiline, RegexLimits.MatchTimeout);
 
     // "M. Mustermann", aber nicht mitten in Abkürzungen wie "z. B."
     private static readonly Regex InitialPattern = new(
         $@"(?<![\p{{L}}.])\p{{Lu}}\.\s?(?<last>\p{{Lu}}\p{{Ll}}{{2,}}(?:-\p{{Lu}}\p{{Ll}}+)?)\b",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     // Nicht Teil eines längeren Wortes wie "Anna-Lena-Syndrom"
-    private static readonly Regex CapitalizedWord = new($@"(?<!-)\b{Word}\b(?!-)", Opts);
-    private static readonly Regex ParticleThenWord = new($@"\G\s+{Particle}(?<w>{Word})\b", Opts);
+    private static readonly Regex CapitalizedWord = new($@"(?<!-)\b{Word}\b(?!-)", Opts, RegexLimits.MatchTimeout);
+    private static readonly Regex ParticleThenWord = new($@"\G\s+{Particle}(?<w>{Word})\b", Opts, RegexLimits.MatchTimeout);
     // Beide suchen rückwärts ab einer Stelle, sonst wird es bei langen Texten mit vielen Namen langsam
-    private static readonly Regex WordBefore = new($@"(?<!-)\b(?<w>{Word})[ \t]+$", Opts | RegexOptions.RightToLeft);
+    private static readonly Regex WordBefore = new($@"(?<!-)\b(?<w>{Word})[ \t]+$", Opts | RegexOptions.RightToLeft, RegexLimits.MatchTimeout);
     private static readonly Regex ArticleBefore = new(@"\b(?:der|die|das|den|dem|des|ein|eine|einem|einen|einer)\s+$",
-        Opts | RegexOptions.IgnoreCase | RegexOptions.RightToLeft);
+        Opts | RegexOptions.IgnoreCase | RegexOptions.RightToLeft, RegexLimits.MatchTimeout);
 
     // Wörter, die typisch für Hauptwörter sind und deshalb kein unbekannter Vorname sein sollten
     private static readonly Regex NounEnding = new(
         @"(?:ung|heit|keit|schaft|ion|tät|nis|tum|ment|ismus|ik|arzt|ärztin|ist|istin|eur|ant|ent|ler|ner|ger|ter|chen|lein|ei|ur|us)$",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     // Was in Terminlisten statt eines Namens hinter der Uhrzeit stehen kann
     private static readonly HashSet<string> AppointmentWord = new(StringComparer.OrdinalIgnoreCase)

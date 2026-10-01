@@ -13,6 +13,20 @@ public sealed class GatewayOptions
     public InjectionOptions Injection { get; set; } = new();
     public AuditOptions Audit { get; set; } = new();
     public PseudonymizationOptions Pseudonymization { get; set; } = new();
+
+    // Zwijg läuft hinter einem Proxy, der HTTPS macht (z.B. Caddy). Dann ist das Sitzungscookie immer Secure
+    // und X-Forwarded-Proto wird ausgewertet.
+    public bool BehindTlsProxy { get; set; }
+
+    public KeyProtectionOptions KeyProtection { get; set; } = new();
+}
+
+// Zertifikat (PFX), mit dem die Data Protection Schlüssel in data/keys verschlüsselt werden.
+// Ohne liegen sie unter Linux und in Docker im Klartext, unter Windows schützt DPAPI.
+public sealed class KeyProtectionOptions
+{
+    public string? CertificatePath { get; set; }
+    public string? CertificatePassword { get; set; }
 }
 
 public sealed class ApiKeyOptions

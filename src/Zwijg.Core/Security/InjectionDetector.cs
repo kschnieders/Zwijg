@@ -24,33 +24,33 @@ public sealed class InjectionDetector
     private static readonly (string Rule, int Weight, Regex Pattern)[] Rules =
     [
         ("anweisungen-ignorieren", 60, new Regex(
-            @"\b(ignore|disregard|forget|override|bypass)\b.{0,40}\b(previous|prior|above|earlier|all|any|system|your)\b.{0,40}\b(instructions?|prompts?|rules?|guidelines?|messages?)\b", Opts)),
+            @"\b(ignore|disregard|forget|override|bypass)\b.{0,40}\b(previous|prior|above|earlier|all|any|system|your)\b.{0,40}\b(instructions?|prompts?|rules?|guidelines?|messages?)\b", Opts, RegexLimits.MatchTimeout)),
         ("anweisungen-ignorieren", 60, new Regex(
-            @"\b(ignorier\w*|vergiss|vergesst|missachte\w*|überschreib\w*|umgeh\w*)\b.{0,50}\b(anweisung\w*|instruktion\w*|regeln|vorgaben|richtlinien|prompts?|befehle?)\b", Opts)),
+            @"\b(ignorier\w*|vergiss|vergesst|missachte\w*|überschreib\w*|umgeh\w*)\b.{0,50}\b(anweisung\w*|instruktion\w*|regeln|vorgaben|richtlinien|prompts?|befehle?)\b", Opts, RegexLimits.MatchTimeout)),
 
         ("rollenwechsel", 30, new Regex(
-            @"\b(you are now|from now on,? you|act as|pretend (to be|you are)|roleplay as)\b", Opts)),
+            @"\b(you are now|from now on,? you|act as|pretend (to be|you are)|roleplay as)\b", Opts, RegexLimits.MatchTimeout)),
         ("rollenwechsel", 30, new Regex(
-            @"\b(du bist (jetzt|ab sofort|nun|ab jetzt)|ab (jetzt|sofort) bist du|spiele die rolle|tu so,? als (ob|wärst))\b", Opts)),
+            @"\b(du bist (jetzt|ab sofort|nun|ab jetzt)|ab (jetzt|sofort) bist du|spiele die rolle|tu so,? als (ob|wärst))\b", Opts, RegexLimits.MatchTimeout)),
 
         ("systemprompt-abfragen", 40, new Regex(
-            @"\b(reveal|show|print|output|repeat|leak|gib|zeig\w*|nenne?|verrate?)\b.{0,40}\b(system ?prompt|systemnachricht|system message|initial instructions|deine anweisungen|your instructions|api.?key|passw(or)?t\w*|zugangsdaten)\b", Opts)),
+            @"\b(reveal|show|print|output|repeat|leak|gib|zeig\w*|nenne?|verrate?)\b.{0,40}\b(system ?prompt|systemnachricht|system message|initial instructions|deine anweisungen|your instructions|api.?key|passw(or)?t\w*|zugangsdaten)\b", Opts, RegexLimits.MatchTimeout)),
 
         ("chat-template-token", 50, new Regex(
-            @"<\|im_start\|>|<\|im_end\|>|<\|system\|>|<\|endoftext\|>|\[/?INST\]|<<SYS>>|</?system>|^\s*#{2,}\s*(system|instruction|anweisung)", Opts | RegexOptions.Multiline)),
+            @"<\|im_start\|>|<\|im_end\|>|<\|system\|>|<\|endoftext\|>|\[/?INST\]|<<SYS>>|</?system>|^[ \t]*#{2,}[ \t]*(system|instruction|anweisung)", Opts | RegexOptions.Multiline, RegexLimits.MatchTimeout)),
 
         ("jailbreak", 40, new Regex(
-            @"\b(jailbreak|DAN mode|do anything now|developer mode|entwicklermodus|ohne einschränkungen|without (any )?restrictions)\b", Opts)),
+            @"\b(jailbreak|DAN mode|do anything now|developer mode|entwicklermodus|ohne einschränkungen|without (any )?restrictions)\b", Opts, RegexLimits.MatchTimeout)),
 
         ("daten-abfluss", 30, new Regex(
-            @"\b(send|post|upload|sende|schick\w*|übermittle|übertrage|lade)\b.{0,60}(https?://|\bwebhook\b|\be-?mail an\b)", Opts)),
+            @"\b(send|post|upload|sende|schick\w*|übermittle|übertrage|lade)\b.{0,60}(https?://|\bwebhook\b|\be-?mail an\b)", Opts, RegexLimits.MatchTimeout)),
         ("markdown-bild-mit-parametern", 40, new Regex(
-            @"!\[[^\]]*\]\(\s*https?://[^)\s]*\?[^)]*\)", Opts)),
+            @"!\[[^\]]*\]\(\s*https?://[^)\s]*\?[^)]*\)", Opts, RegexLimits.MatchTimeout)),
 
         ("an-die-ki-gerichtet", 25, new Regex(
-            @"\b(an die ki|an das (sprach)?modell|note to (the )?(ai|assistant|llm)|hinweis für (die )?ki|if you are an? (ai|llm|language model)|wenn du eine ki bist)\b", Opts)),
+            @"\b(an die ki|an das (sprach)?modell|note to (the )?(ai|assistant|llm)|hinweis für (die )?ki|if you are an? (ai|llm|language model)|wenn du eine ki bist)\b", Opts, RegexLimits.MatchTimeout)),
 
-        ("base64-block", 15, new Regex(@"[A-Za-z0-9+/]{200,}={0,2}", Opts)),
+        ("base64-block", 15, new Regex(@"[A-Za-z0-9+/]{200,}={0,2}", Opts, RegexLimits.MatchTimeout)),
     ];
 
     public InjectionResult Scan(string text)

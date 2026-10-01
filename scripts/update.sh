@@ -26,7 +26,8 @@ main() {
   echo "Update von $current auf $latest"
   if [ -d "$dir/data" ]; then
     backup="$dir/data-sicherung-$current-$(date +%Y%m%d-%H%M%S).tar.gz"
-    tar -czf "$backup" -C "$dir" data
+    # Die Sicherung enthält die Schlüssel, deshalb nur für den eigenen Benutzer lesbar
+    (umask 077 && tar -czf "$backup" -C "$dir" data)
     echo "Daten gesichert in $backup"
   fi
 
