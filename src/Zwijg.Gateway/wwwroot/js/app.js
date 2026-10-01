@@ -274,6 +274,7 @@ function logout(message) {
   state.key = "";
   state.me = null;
   state.meJson = "";
+  versionInfo = null;
   state.history = [];
   state.conversationId = null;
   state.secrets = [];
@@ -382,6 +383,56 @@ const UPDATE_STEPS = {
   },
 };
 
+// Release Texte aus CHANGELOG.md als einfaches Markdown: Überschriften, Listen, fett, Code und Links zu GitHub
+function renderNotes(md) {
+  const inline = t => esc(t)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\[([^\]]+)\]\((https:\/\/github\.com\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+  let html = "", list = false;
+  for (const raw of String(md || "").split(/\r?\n/)) {
+    const line = raw.trim();
+    const item = line.match(/^[-*]\s+(.*)$/);
+    if (item) {
+      if (!list) { html += "<ul>"; list = true; }
+      html += `<li>${inline(item[1])}</li>`;
+      continue;
+    }
+    if (list) { html += "</ul>"; list = false; }
+    const heading = line.match(/^#{2,4}\s+(.*)$/);
+    if (heading) html += `<h5>${inline(heading[1])}</h5>`;
+    else if (line) html += `<p>${inline(line)}</p>`;
+  }
+  return html + (list ? "</ul>" : "");
+}
+
+function updateSeen(version) {
+  try {
+    if (version) localStorage.setItem("zwijg.updateSeen", version);
+    return localStorage.getItem("zwijg.updateSeen") || "";
+  } catch { return ""; }
+}
+
+// Hinweis oben für Admins, wenn es eine neue Version gibt. Wegklicken gilt bis zur nächsten Version.
+function updateBannerHtml() {
+  const v = versionInfo;
+  if (!state.me?.admin || !v?.updateAvailable) return "";
+  if (updateSeen() === v.latest) return "";
+  const title = v.security ? `Sicherheitsupdate: Zwijg ${v.latest} ist verfügbar` : `Zwijg ${v.latest} ist verfügbar`;
+  const text = v.security
+    ? `Installiert ist ${v.current}. Die neue Version schließt Sicherheitslücken und sollte bald eingespielt werden.`
+    : `Installiert ist ${v.current}.`;
+  return `<div class="banner ${v.security ? "Critical" : "Info"}">
+    ${icon(v.security ? "alert" : "download")}
+    <div class="banner-body">
+      <div class="banner-title">${esc(title)}</div>
+      <div class="banner-text">${esc(text)} <button type="button" class="link-btn" data-update-open>Was ist neu und wie aktualisieren?</button></div>
+    </div>
+    <button type="button" class="icon-btn" data-update-seen title="Ausblenden" aria-label="Ausblenden">${icon("x")}</button>
+  </div>`;
+}
+
 async function loadVersion(refresh = false) {
   if (!state.me?.admin) return;
   try {
@@ -390,6 +441,7 @@ async function loadVersion(refresh = false) {
     versionInfo = null;
   }
   renderVersionRow();
+  renderBanners();
   if ($("updateDialog").open) renderUpdateDialog();
 }
 
@@ -398,7 +450,8 @@ function renderVersionRow() {
   if (!el) return;
   const v = versionInfo;
   if (!v) { el.innerHTML = ""; return; }
-  const badge = v.updateAvailable ? chip(`Update auf ${v.latest}`, "info", "download")
+  const badge = v.updateAvailable && v.security ? chip(`Sicherheitsupdate auf ${v.latest}`, "warn", "alert")
+    : v.updateAvailable ? chip(`Update auf ${v.latest}`, "info", "download")
     : v.error ? chip("nicht geprüft", "", "alert")
     : !v.enabled && !v.checkedAt ? chip("Prüfung aus")
     : chip("aktuell", "ok", "check");
@@ -409,7 +462,9 @@ function renderUpdateDialog() {
   const v = versionInfo;
   if (!v) return;
 
-  $("updVerdict").innerHTML = v.updateAvailable
+  $("updVerdict").innerHTML = v.updateAvailable && v.security
+    ? `<div class="doc-verdict bad">${icon("alert")}<div><strong>Sicherheitsupdate auf ${esc(v.latest)}</strong><span>Installiert ist ${esc(v.current)}. Die neue Version schließt Sicherheitslücken, bitte bald einspielen. Einstellungen, Protokoll und Verlauf bleiben erhalten.</span></div></div>`
+    : v.updateAvailable
     ? `<div class="doc-verdict warn">${icon("download")}<div><strong>Version ${esc(v.latest)} ist verfügbar</strong><span>Installiert ist ${esc(v.current)}. Einstellungen, Protokoll und Verlauf bleiben beim Update erhalten.</span></div></div>`
     : v.error
       ? `<div class="doc-verdict">${icon("alert")}<div><strong>Konnte nicht prüfen</strong><span>${esc(v.error)}</span></div></div>`
@@ -424,8 +479,13 @@ function renderUpdateDialog() {
     fact("Geprüft", v.checkedAt ? fmtDateTime(v.checkedAt) : "") +
     fact("Quelle", `<a href="https://github.com/${esc(v.repository)}/releases" target="_blank" rel="noopener">github.com/${esc(v.repository)}</a>`);
 
-  $("updNotesBox").hidden = !(v.updateAvailable && v.notes);
-  $("updNotes").textContent = v.notes || "";
+  // Alle Versionen seit der installierten, neueste zuerst
+  const releases = v.releases || [];
+  $("updNotesBox").hidden = !(v.updateAvailable && releases.length);
+  $("updNotes").innerHTML = releases.map(r => `<div class="upd-release">
+      <h4>Version ${esc(r.version)}${r.publishedAt ? ` <span class="muted small">vom ${fmtDateTime(r.publishedAt)}</span>` : ""}${r.security ? chip("Sicherheit", "warn", "alert") : ""}</h4>
+      <div class="notes-md">${r.notes ? renderNotes(r.notes) : '<p class="muted">Keine Beschreibung.</p>'}</div>
+    </div>`).join("");
 
   // Befehle passend zur Installation zuerst, die anderen aufklappbar
   const block = key => {
@@ -575,6 +635,11 @@ async function openAbout() {
   $("aboutDialog").showModal();
   const h = await fetch("/health").then(r => r.json()).catch(() => null);
   $("aboutVersion").textContent = h?.version ? "Version " + h.version : "";
+
+  // Was ist neu in der installierten Version, aus der mitgelieferten CHANGELOG.md
+  const c = await fetch("/changelog").then(r => r.json()).catch(() => null);
+  $("aboutNewBox").hidden = !c?.notes;
+  $("aboutNew").innerHTML = c?.notes ? renderNotes(c.notes) : "";
 }
 
 $("loginAbout").addEventListener("click", openAbout);
@@ -658,6 +723,7 @@ function applyMe() {
   renderTemplateBar();
   applyHistory();
   renderBanners();
+  if (me.admin && !versionInfo) loadVersion();
 }
 
 function renderTemplateBar() {
@@ -704,10 +770,12 @@ function bannerHtml(a, dismiss = true) {
 }
 
 function renderBanners() {
-  $("banners").innerHTML = (state.me.announcements || []).map(a => bannerHtml(a)).join("");
+  $("banners").innerHTML = updateBannerHtml() + (state.me.announcements || []).map(a => bannerHtml(a)).join("");
 }
 
 $("banners").addEventListener("click", async e => {
+  if (e.target.closest("[data-update-open]")) { openUpdateDialog(); return; }
+  if (e.target.closest("[data-update-seen]")) { updateSeen(versionInfo?.latest); renderBanners(); return; }
   const btn = e.target.closest("[data-dismiss]");
   if (!btn) return;
   btn.closest(".banner").remove();

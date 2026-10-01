@@ -12,6 +12,7 @@ Bitte nie echte Namen, Geburtsdaten, Versichertennummern oder Befunde in Issues,
 2. Änderung machen, am besten mit Test
 3. `dotnet test` muss grün sein
 4. Pull Request öffnen und kurz beschreiben, was und warum
+5. Ein Label vergeben, damit die Änderung im Changelog richtig einsortiert wird: `security` (Lücke geschlossen), `new` (neue Funktion), `improvement` (Bestehendes besser), `bug` (Fehler behoben) oder `internal` (Tests, Doku, Aufräumen, taucht im Changelog nicht auf). Der Titel des Pull Requests landet so im Changelog, also bitte verständlich formulieren.
 
 Kommentare und Texte in der Oberfläche sind auf Deutsch, schlicht und kurz.
 
@@ -20,6 +21,16 @@ Updates müssen alte Installationen weiter laden können:
 - Neue Felder in `settings.json` bekommen einen sinnvollen Standardwert. Muss sich Bestehendes ändern, kommt ein neuer Schritt in `SettingsStore.Migrations`.
 - Neue Spalten oder Tabellen in den Datenbanken kommen als neuer Schritt in `SqliteSchema.Migrate` dazu. Alte Schritte werden nie geändert.
 - Die Endpunkte unter `/v1` bleiben kompatibel. Felder dürfen dazukommen, aber nicht wegfallen.
+
+## Neue Version veröffentlichen
+
+Nur für den Maintainer.
+
+1. **Actions**, **Changelog vorbereiten**, **Run workflow**, Version eingeben, zum Beispiel `1.1.0`
+2. Im Ergebnis auf **Pull Request öffnen** klicken, den Text in `CHANGELOG.md` für Praxen verständlich formulieren und mergen
+3. **Actions**, **Release**, **Run workflow**, dieselbe Version eingeben
+
+Der Release Text kommt aus `CHANGELOG.md`. Steht dort ein Abschnitt **Sicherheit**, zeigt Zwijg das Update als Sicherheitsupdate an.
 
 ## Rechte an Beiträgen
 

@@ -9,5 +9,6 @@
 ## Checkliste
 
 - [ ] `dotnet test` läuft grün
+- [ ] Ein Label ist vergeben: `security`, `new`, `improvement`, `bug` oder `internal`
 - [ ] Es sind keine echten Patientendaten enthalten, auch nicht in Tests oder Screenshots
 - [ ] Ich habe [CONTRIBUTING.md](https://github.com/kschnieders/zwijg/blob/main/CONTRIBUTING.md) gelesen und räume die dort unter "Rechte an Beiträgen" beschriebenen Nutzungsrechte ein

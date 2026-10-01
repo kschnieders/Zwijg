@@ -16,7 +16,12 @@ public sealed record UpdateInfo(
     string? Error,
     bool Enabled,
     string InstallType,
-    string Repository);
+    string Repository,
+    bool Security,
+    IReadOnlyList<ReleaseNote> Releases);
+
+// Eine Version auf GitHub. Security ist true, wenn die Beschreibung einen Abschnitt "Sicherheit" hat.
+public sealed record ReleaseNote(string Version, string? Notes, string? Url, DateTimeOffset? PublishedAt, bool Security);
 
 public sealed record UpdateCheckInput(bool Enabled);
 
@@ -27,7 +32,9 @@ public sealed partial class UpdateChecker(IHttpClientFactory http, SettingsStore
     private static readonly TimeSpan CacheFor = TimeSpan.FromHours(12);
 
     private readonly SemaphoreSlim _lock = new(1, 1);
-    private (string? Latest, string? Url, string? Notes, DateTimeOffset? Published, string? Error, DateTimeOffset At)? _cached;
+    private Fetched? _cached;
+
+    private sealed record Fetched(IReadOnlyList<ReleaseNote> Releases, string? Error, DateTimeOffset At);
 
     // Wer Zwijg abspaltet, kann hier sein eigenes Repository eintragen
     public string Repository => config["Zwijg:UpdateRepository"] is { Length: > 0 } repo ? repo : "kschnieders/zwijg";
@@ -42,7 +49,7 @@ public sealed partial class UpdateChecker(IHttpClientFactory http, SettingsStore
             await _lock.WaitAsync(ct);
             try
             {
-                if (refresh || _cached == null || DateTimeOffset.UtcNow - _cached.Value.At > CacheFor)
+                if (refresh || _cached == null || DateTimeOffset.UtcNow - _cached.At > CacheFor)
                     _cached = await FetchAsync(ct);
             }
             finally
@@ -53,11 +60,15 @@ public sealed partial class UpdateChecker(IHttpClientFactory http, SettingsStore
 
         var current = Endpoints.Version;
         var c = _cached;
-        var newer = c?.Latest != null && IsNewer(c.Value.Latest, current);
-        return new UpdateInfo(current, c?.Latest, newer, c?.Url, c?.Notes, c?.Published, c?.At, c?.Error, enabled, InstallType(), Repository);
+        var latest = c?.Releases.FirstOrDefault();
+
+        // Alles zwischen der installierten und der neuesten Version, damit man nichts verpasst
+        var missed = c?.Releases.Where(r => IsNewer(r.Version, current)).ToList() ?? [];
+        return new UpdateInfo(current, latest?.Version, missed.Count > 0, latest?.Url, latest?.Notes, latest?.PublishedAt,
+            c?.At, c?.Error, enabled, InstallType(), Repository, missed.Any(r => r.Security), missed);
     }
 
-    private async Task<(string?, string?, string?, DateTimeOffset?, string?, DateTimeOffset)> FetchAsync(CancellationToken ct)
+    private async Task<Fetched> FetchAsync(CancellationToken ct)
     {
         var now = DateTimeOffset.UtcNow;
         try
@@ -66,29 +77,43 @@ public sealed partial class UpdateChecker(IHttpClientFactory http, SettingsStore
             timeout.CancelAfter(TimeSpan.FromSeconds(8));
 
             var client = http.CreateClient(HttpClientName);
-            using var req = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{Repository}/releases/latest");
+            using var req = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{Repository}/releases?per_page=30");
             req.Headers.UserAgent.ParseAdd($"Zwijg/{Endpoints.Version}");
             req.Headers.Accept.ParseAdd("application/vnd.github+json");
 
             using var res = await client.SendAsync(req, timeout.Token);
             if (res.StatusCode == HttpStatusCode.NotFound)
-                return (null, null, null, null, null, now); // Noch keine Veröffentlichung
+                return new([], null, now); // Noch keine Veröffentlichung
             if (!res.IsSuccessStatusCode)
-                return (null, null, null, null, $"GitHub antwortet mit {(int)res.StatusCode}", now);
+                return new([], $"GitHub antwortet mit {(int)res.StatusCode}", now);
 
-            var json = JsonNode.Parse(await res.Content.ReadAsStringAsync(timeout.Token));
-            var tag = json?["tag_name"]?.GetValue<string>();
-            var notes = json?["body"]?.GetValue<string>();
-            if (notes?.Length > 4000)
-                notes = notes[..4000] + " ...";
-            var published = json?["published_at"]?.GetValue<string>() is { } p && DateTimeOffset.TryParse(p, out var d) ? d : (DateTimeOffset?)null;
+            var releases = new List<ReleaseNote>();
+            if (JsonNode.Parse(await res.Content.ReadAsStringAsync(timeout.Token)) is JsonArray list)
+            {
+                foreach (var json in list.OfType<JsonObject>())
+                {
+                    // Entwürfe und Vorabversionen zählen nicht
+                    if (json["draft"]?.GetValue<bool>() == true || json["prerelease"]?.GetValue<bool>() == true)
+                        continue;
+                    if (json["tag_name"]?.GetValue<string>()?.TrimStart('v', 'V') is not { } version || Parse(version) == null)
+                        continue;
 
-            return (tag?.TrimStart('v', 'V'), json?["html_url"]?.GetValue<string>(), notes, published, null, now);
+                    var notes = json["body"]?.GetValue<string>();
+                    if (notes?.Length > 4000)
+                        notes = notes[..4000] + " ...";
+                    var published = json["published_at"]?.GetValue<string>() is { } p && DateTimeOffset.TryParse(p, out var d) ? d : (DateTimeOffset?)null;
+                    releases.Add(new ReleaseNote(version, notes, json["html_url"]?.GetValue<string>(), published, Changelog.IsSecurity(notes)));
+                }
+            }
+
+            // Neueste zuerst, egal in welcher Reihenfolge GitHub sie liefert
+            releases.Sort((a, b) => Parse(b.Version)!.CompareTo(Parse(a.Version)));
+            return new(releases, null, now);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or InvalidOperationException)
         {
             logger.LogInformation("Update Prüfung fehlgeschlagen: {Message}", ex.Message);
-            return (null, null, null, null, "GitHub ist gerade nicht erreichbar", now);
+            return new([], "GitHub ist gerade nicht erreichbar", now);
         }
     }
 

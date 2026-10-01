@@ -1,0 +1,60 @@
+name: Changelog vorbereiten
+
+# Wird von Hand gestartet: Actions, Changelog vorbereiten, Run workflow, Version eingeben.
+# Legt einen Branch mit dem neuen Abschnitt in CHANGELOG.md an. Den Pull Request dazu öffnest du selbst über den Link im Ergebnis.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Neue Version, zum Beispiel 1.1.0"
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Abschnitt aus den Pull Requests bauen
+        run: |
+          # Alles, was seit der letzten Version gemergt wurde
+          LAST=$(git tag --list 'v*' --sort=-v:refname | head -1)
+          SINCE=""
+          if [ -n "$LAST" ]; then
+            SINCE=$(git log -1 --format=%cI "$LAST")
+            echo "Letzte Version: $LAST vom $SINCE"
+          fi
+          gh pr list --state merged --base main --limit 500 --json number,title,labels,author,mergedAt > prs.json
+          node scripts/changelog.js "$VERSION" prs.json "$SINCE" | tee section.md
+
+      - name: Branch anlegen
+        run: |
+          BRANCH="changelog/$VERSION"
+          # Der Commit läuft unter dem Konto, das den Workflow gestartet hat
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add CHANGELOG.md
+          git commit -m "Changelog $VERSION"
+          git push origin "$BRANCH"
+
+          TITLE=$(node -e 'console.log(encodeURIComponent("Changelog " + process.argv[1]))' "$VERSION")
+          URL="${{ github.server_url }}/${{ github.repository }}/compare/main...$BRANCH?expand=1&labels=internal&title=$TITLE"
+          {
+            echo "## Changelog $VERSION ist vorbereitet"
+            echo
+            echo "1. [Pull Request öffnen]($URL) und **Create pull request** klicken"
+            echo "2. Unter **Files changed** die Sätze anpassen, damit sie für Praxen verständlich sind"
+            echo "3. Prüfungen abwarten und mergen, danach den Workflow **Release** mit $VERSION starten"
+            echo
+            cat section.md
+          } >> "$GITHUB_STEP_SUMMARY"

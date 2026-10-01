@@ -1153,6 +1153,11 @@
       <dd>GNU AGPL 3.0, freie Software ohne Gewähr. Die Namensnennung muss in veränderten Fassungen erhalten bleiben.</dd>
     </dl>
 
+    <details class="upd-notes" id="aboutNewBox" hidden>
+      <summary>Was ist neu in dieser Version?</summary>
+      <div class="notes-md" id="aboutNew"></div>
+    </details>
+
     <h3 class="about-sub">Verwendete Software</h3>
     <p class="muted small">Zwijg baut auf freien Bibliotheken und Daten auf. Alle erlauben Nutzung und Weitergabe, auch kommerziell.</p>
     <ul class="about-libs">
@@ -1185,13 +1190,13 @@
     </header>
     <div id="updVerdict"></div>
     <dl class="about-facts" id="updFacts"></dl>
-    <details class="upd-notes" id="updNotesBox" hidden>
+    <details class="upd-notes" id="updNotesBox" open hidden>
       <summary>Was ist neu?</summary>
       <div class="upd-notes-text" id="updNotes"></div>
     </details>
     <div id="updHowto"></div>
-    <label class="switch upd-switch"><input type="checkbox" id="updCheck"><span class="track"></span><span>Beim Öffnen der Übersicht automatisch bei GitHub nachsehen</span></label>
-    <p class="muted small">Dabei fragt Zwijg nur die neueste Versionsnummer ab. Es werden keine Daten aus der Praxis übertragen.</p>
+    <label class="switch upd-switch"><input type="checkbox" id="updCheck"><span class="track"></span><span>Automatisch bei GitHub nachsehen, höchstens alle 12 Stunden</span></label>
+    <p class="muted small">Dabei fragt Zwijg nur die Liste der Versionen ab. Es werden keine Daten aus der Praxis übertragen.</p>
     <footer class="dialog-foot">
       <button class="btn ghost" type="button" id="updRefresh"><svg class="ico"><use href="#i-refresh"/></svg>Jetzt prüfen</button>
       <span class="spacer"></span>
