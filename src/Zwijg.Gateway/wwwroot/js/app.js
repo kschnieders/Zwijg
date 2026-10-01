@@ -424,6 +424,7 @@ const UPDATE_STEPS = {
     title: "Docker",
     steps: [
       ["Im Ordner mit der docker-compose.yml ausführen. Die Daten liegen im Volume und bleiben erhalten:", "docker compose pull && docker compose up -d"],
+      ["Nur einmal nötig, wenn Zwijg danach meldet, dass es /app/data nicht ändern darf (älteres Volume, das noch root gehört). Danach wieder docker compose up -d:", "docker compose run --rm --no-deps --user root --entrypoint chown zwijg -R 1654 /app/data"],
     ],
   },
   source: {

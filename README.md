@@ -184,6 +184,8 @@ Als Admin steht in der Übersicht unter Status die installierte Version. Gibt es
 
 Die Skripte sichern vorher den `data` Ordner und lassen ihn unangetastet. Einstellungen, Protokoll und Verlauf haben eine Formatversion. Neue Versionen stellen ältere Dateien beim Start automatisch um und legen vorher eine Sicherung an (`settings.json.v0.bak` usw.).
 
+Docker: Das Image läuft nicht mehr als root. Bestehende Volumes brauchen beim ersten Update darauf einmal einen `chown`, siehe [Betrieb](docs/betrieb.md#umstieg-auf-eine-version-mit-docker-ohne-root-hsts-und-schlüsselschutz).
+
 ## Tests
 
 ```bash

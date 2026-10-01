@@ -14,5 +14,9 @@ WORKDIR /app
 COPY --from=build /app .
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
+# Nicht als root laufen. APP_UID (1654) kommt aus dem Basis Image. Der Ordner muss vor VOLUME angelegt sein,
+# damit ein neues Volume ihm gehört. Bestehende Volumes gehören root, siehe docs/betrieb.md.
+RUN mkdir -p /app/data && chown $APP_UID /app/data
 VOLUME /app/data
+USER $APP_UID
 ENTRYPOINT ["dotnet", "Zwijg.Gateway.dll"]

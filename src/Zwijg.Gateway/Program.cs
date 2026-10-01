@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.DataProtection.Repositories;
@@ -20,14 +22,17 @@ builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 
 // Schlüssel zum Verschlüsseln der API Schlüssel liegen neben den Einstellungen.
-// Unter Windows werden sie zusätzlich mit DPAPI an das Benutzerkonto gebunden.
+// Mit Zertifikat (Zwijg:KeyProtection) werden sie damit verschlüsselt, sonst unter Windows mit DPAPI
+// an das Benutzerkonto gebunden. Unter Linux und in Docker liegen sie ohne Zertifikat im Klartext.
 builder.Services.AddDataProtection().SetApplicationName("Zwijg");
+builder.Services.AddSingleton<KeyRingCertificate>();
 builder.Services.AddOptions<KeyManagementOptions>()
-    .Configure<IOptions<GatewayOptions>, ILoggerFactory>((o, gw, logs) =>
+    .Configure<IOptions<GatewayOptions>, ILoggerFactory, KeyRingCertificate>((o, gw, logs, cert) =>
     {
-        var dir = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(gw.Value.SettingsPath))!, "keys");
-        o.XmlRepository = new FileSystemXmlRepository(new DirectoryInfo(dir), logs);
-        if (OperatingSystem.IsWindows())
+        o.XmlRepository = new FileSystemXmlRepository(new DirectoryInfo(KeyDirectory(gw.Value)), logs);
+        if (cert.Value != null)
+            o.XmlEncryptor = new KeyRingCertificateEncryptor(cert.Value, logs);
+        else if (OperatingSystem.IsWindows())
             o.XmlEncryptor = new DpapiXmlEncryptor(protectToLocalMachine: false, logs);
     });
 
@@ -51,6 +56,13 @@ builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.C
         // Eine API leitet nicht auf eine Login Seite um, sie antwortet mit 401 oder 403
         o.Events.OnRedirectToLogin = c => { c.Response.StatusCode = 401; return Task.CompletedTask; };
         o.Events.OnRedirectToAccessDenied = c => { c.Response.StatusCode = 403; return Task.CompletedTask; };
+    });
+// Hinter einem HTTPS Proxy kommt die Anfrage per HTTP an. Das Cookie soll trotzdem nur über HTTPS gehen.
+builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
+    .Configure<IOptions<GatewayOptions>>((o, gw) =>
+    {
+        if (gw.Value.BehindTlsProxy)
+            o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     });
 builder.Services.AddSingleton<ProviderRegistry>();
 builder.Services.AddSingleton<IPiiDetector, RegexPiiDetector>();
@@ -103,6 +115,17 @@ builder.Services.AddHostedService<Zwijg.Gateway.History.ConversationCleanup>();
 
 var app = builder.Build();
 
+// Ohne Schreibrechte im Datenordner gar nicht erst starten, sonst scheitert später jede Anfrage ohne klaren Grund
+var gateway = app.Services.GetRequiredService<IOptions<GatewayOptions>>().Value;
+var dataDir = Path.GetDirectoryName(Path.GetFullPath(gateway.SettingsPath))!;
+DataDirectoryCheck.EnsureWritable(
+    [dataDir, KeyDirectory(gateway), Path.GetDirectoryName(Path.GetFullPath(gateway.Audit.DatabasePath))!],
+    [gateway.SettingsPath, Path.Combine(dataDir, "history.db"), gateway.Audit.DatabasePath, gateway.Audit.DatabasePath + ".key", gateway.Audit.DatabasePath + ".kopf"]);
+
+// Zertifikat für die Schlüssel gleich laden, ein falscher Pfad oder ein falsches Passwort verhindert den Start.
+// Vor allem anderen, damit schon die ersten neuen Daten mit einem geschützten Schlüssel verschlüsselt werden.
+KeyRingCertificate.EnsureProtectedDefaultKey(app.Services);
+
 // Einstellungen gleich beim Start laden, damit Fehler sofort auffallen
 app.Services.GetRequiredService<SettingsStore>();
 app.Services.GetRequiredService<IAuditLog>();
@@ -110,6 +133,22 @@ app.Services.GetRequiredService<IAuditLog>();
 // Texterkennung meldet nicht löschbare Zwischenbilder ins Log. Liegengebliebene vom letzten Lauf jetzt entfernen.
 TesseractOcr.Log = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Zwijg.Texterkennung");
 await TesseractOcr.DeleteLeftoversAsync(TesseractOcr.Log);
+
+if (app.Services.GetRequiredService<KeyRingCertificate>().Value == null && !OperatingSystem.IsWindows())
+    app.Logger.LogWarning("Die Schlüssel in {Dir} liegen unverschlüsselt. Wer sie hat, kann API Schlüssel und Verlauf entschlüsseln " +
+        "und Sitzungen fälschen. Zwijg:KeyProtection:CertificatePath setzen, siehe docs/betrieb.md", KeyDirectory(gateway));
+
+// Hinter dem Proxy zählt nur, ob er per HTTPS angesprochen wurde. X-Forwarded-For wird bewusst nicht übernommen,
+// sonst könnte jeder seine Adresse für die Anmeldesperre selbst wählen. Proxy Adressen werden nicht geprüft,
+// weil der Proxy in Docker nicht auf localhost läuft. Ein gefälschtes Proto bewirkt nur einen HSTS Header über HTTP,
+// den Browser ignorieren. Der Port von Zwijg darf dann nur für den Proxy erreichbar sein.
+if (gateway.BehindTlsProxy)
+{
+    var forwarded = new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedProto };
+    forwarded.KnownNetworks.Clear();
+    forwarded.KnownProxies.Clear();
+    app.UseForwardedHeaders(forwarded);
+}
 
 // Fehler nie mit Details nach außen geben, die Anfrage könnte Patientendaten enthalten
 app.UseExceptionHandler(error => error.Run(async ctx =>
@@ -121,6 +160,10 @@ app.UseExceptionHandler(error => error.Run(async ctx =>
     ctx.Response.StatusCode = badInput ? 400 : 500;
     await ctx.Response.WriteAsJsonAsync(new { error = badInput ? "Ungültige Anfrage (JSON oder UTF-8 fehlerhaft)" : "Interner Fehler" });
 }));
+
+// Browser merken sich, Zwijg nur noch per HTTPS aufzurufen. Gilt nur für Antworten über HTTPS und nicht für localhost.
+if (!app.Environment.IsDevelopment())
+    app.UseHsts();
 
 // Schutz für die Weboberfläche: nicht in fremde Seiten einbetten, nur eigene Skripte ausführen
 app.Use(async (ctx, next) =>
@@ -147,5 +190,8 @@ app.UseMiddleware<ApiKeyMiddleware>();
 app.MapGatewayEndpoints();
 
 app.Run();
+
+static string KeyDirectory(GatewayOptions gw) =>
+    Path.Combine(Path.GetDirectoryName(Path.GetFullPath(gw.SettingsPath))!, "keys");
 
 public partial class Program;
