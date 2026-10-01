@@ -1,8 +1,15 @@
 name: Tests
 
+# Pull Requests laufen über pull_request. push nur für main, sonst liefe bei eigenen Branches alles doppelt.
 on:
   push:
+    branches: [main]
   pull_request:
+
+# Kommt ein neuer Stand in den Pull Request, wird der alte Lauf abgebrochen. Auf main läuft jeder Lauf zu Ende.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:

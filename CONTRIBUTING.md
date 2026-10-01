@@ -12,7 +12,7 @@ Bitte nie echte Namen, Geburtsdaten, Versichertennummern oder Befunde in Issues,
 2. Änderung machen, am besten mit Test
 3. `dotnet test` muss grün sein
 4. Pull Request öffnen und kurz beschreiben, was und warum
-5. Ein Label vergeben, damit die Änderung im Changelog richtig einsortiert wird: `security` (Lücke geschlossen), `new` (neue Funktion), `improvement` (Bestehendes besser), `bug` (Fehler behoben) oder `internal` (Tests, Doku, Aufräumen, taucht im Changelog nicht auf). Der Titel des Pull Requests landet so im Changelog, also bitte verständlich formulieren.
+5. Vor dem Mergen bekommt jeder Pull Request ein Label, damit die Änderung im Changelog richtig einsortiert wird. Das setzt der Maintainer, ein Vorschlag in der Beschreibung hilft: `security` (Lücke geschlossen), `new` (neue Funktion), `improvement` (Bestehendes besser), `bug` (Fehler behoben) oder `internal` (Tests, Doku, Aufräumen, taucht im Changelog nicht auf). Der Titel des Pull Requests landet so im Changelog, also bitte verständlich formulieren.
 
 Kommentare und Texte in der Oberfläche sind auf Deutsch, schlicht und kurz.
 
