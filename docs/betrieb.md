@@ -50,13 +50,13 @@ zwijg.praxis.local {
 Alles Wichtige liegt im Ordner `data`:
 
 - `settings.json`: Einstellungen, Benutzer, Verbindungen
-- `audit.db`: Protokoll
+- `audit.db`: Protokoll, dazu `audit.db.key` (Schlüssel für die Echtheitsprüfung) und `audit.db.kopf` (Anzahl und letzter Eintrag). Die drei Dateien gehören zusammen.
 - `history.db`: gespeicherte Unterhaltungen
 - `keys`: die Schlüssel zum Entschlüsseln
 
 Den ganzen Ordner regelmäßig sichern, am besten, während Zwijg kurz beendet ist.
 
-Wichtig unter Windows: Die Schlüssel in `keys` sind zusätzlich an das Windows Konto gebunden, unter dem Zwijg läuft. Auf einem anderen Rechner oder unter einem anderen Konto lassen sie sich nicht öffnen. Dann müssen API Schlüssel der Anbieter neu eingetragen werden, und gespeicherte Unterhaltungen sind nicht mehr lesbar. Einstellungen, Benutzer und Protokoll bleiben erhalten.
+Wichtig unter Windows: Die Schlüssel in `keys` sind zusätzlich an das Windows Konto gebunden, unter dem Zwijg läuft. Auf einem anderen Rechner oder unter einem anderen Konto lassen sie sich nicht öffnen. Dann müssen API Schlüssel der Anbieter neu eingetragen werden, und gespeicherte Unterhaltungen sind nicht mehr lesbar. Einstellungen, Benutzer und Protokoll bleiben erhalten, die Echtheit älterer Protokolleinträge lässt sich dann aber nicht mehr prüfen.
 
 ## Updates
 
@@ -70,4 +70,6 @@ Die Skripte sichern vorher den Ordner `data` und lassen ihn unangetastet.
 
 ## Protokoll prüfen
 
-Unter **Protokoll** auf **Echtheit prüfen** klicken. Zwijg prüft dann die Hashkette und meldet, ob Einträge nachträglich verändert oder gelöscht wurden. Mit **CSV Export** lässt sich das Protokoll zum Beispiel für den Datenschutzbeauftragten ausgeben.
+Unter **Protokoll** auf **Echtheit prüfen** klicken. Zwijg prüft dann die Hashkette und meldet, ob Einträge nachträglich verändert oder gelöscht wurden. Die Hashes sind mit einem eigenen Schlüssel gebildet, der nicht in der Datenbank liegt. Wer nur die Datenbank ändern kann, kann sie also nicht passend neu berechnen. Grenze: Wer eine ältere Kopie von `audit.db.kopf` hat, kann nach einem Neustart die neueren Einträge am Ende löschen, ohne dass es auffällt. Dagegen hilft nur eine Sicherung außerhalb des Servers.
+
+Meldet die Prüfung einen Fehler, bleibt das so, bis das Protokoll neu beginnt: Zwijg beenden, `audit.db`, `audit.db.key` und `audit.db.kopf` zusammen in einen Archivordner verschieben und Zwijg wieder starten. Mit **CSV Export** lässt sich das Protokoll zum Beispiel für den Datenschutzbeauftragten ausgeben.
