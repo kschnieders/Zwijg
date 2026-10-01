@@ -23,6 +23,7 @@ public sealed class OcrFactAttribute : FactAttribute
     }
 }
 
+[Collection("Texterkennung")]
 public class OcrTests(GatewayFactory factory) : IClassFixture<GatewayFactory>
 {
     private static readonly byte[] ScanPng = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", "scan.png"));

@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Text;
 using Docnet.Core;
 using Docnet.Core.Models;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Zwijg.Core.Ocr;
 
@@ -23,6 +25,9 @@ public static class TesseractOcr
 
     // PDFium ist nicht für mehrere Threads gleichzeitig gebaut
     private static readonly SemaphoreSlim RenderLock = new(1, 1);
+
+    // Setzt das Gateway beim Start
+    public static ILogger Log { get; set; } = NullLogger.Instance;
 
     public static async Task<OcrStatus> CheckAsync(OcrOptions o, CancellationToken ct = default)
     {
@@ -47,15 +52,22 @@ public static class TesseractOcr
 
     // Fehlt eine Sprache, liest Tesseract still mit den übrigen weiter und meldet trotzdem Erfolg.
     // Deshalb vorher prüfen. Das Ergebnis gilt eine Minute, damit nicht jede Datei Tesseract dreimal startet.
-    private static (OcrOptions Options, OcrStatus Status, DateTime At)? _lastCheck;
+    // Als Klasse gespeichert, damit parallele Anfragen nie einen halb geschriebenen Eintrag lesen.
+    internal sealed record LastCheck(OcrOptions Options, OcrStatus Status, DateTime At);
+
+    internal static LastCheck? _lastCheck;
 
     private static async Task<(string? Exe, string? Error)> ReadyAsync(OcrOptions o, CancellationToken ct)
     {
         var last = _lastCheck;
-        var status = last is { } l && l.Options == o && DateTime.UtcNow - l.At < TimeSpan.FromMinutes(1)
-            ? l.Status
-            : await CheckAsync(o, ct);
-        _lastCheck = (o, status, DateTime.UtcNow);
+        OcrStatus status;
+        if (last != null && last.Options == o && DateTime.UtcNow - last.At < TimeSpan.FromMinutes(1))
+            status = last.Status;
+        else
+        {
+            status = await CheckAsync(o, ct);
+            _lastCheck = new(o, status, DateTime.UtcNow);
+        }
         return status.Available ? (status.Path, null) : (null, status.Problem ?? "Tesseract ist nicht bereit");
     }
 
@@ -92,6 +104,9 @@ public static class TesseractOcr
             var texts = new List<string>();
             foreach (var file in files)
             {
+                // Zeigt dem Aufräumen beim Start einer zweiten Instanz, dass der Ordner noch benutzt wird
+                try { Directory.SetLastWriteTimeUtc(dir, DateTime.UtcNow); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
                 var (text, error) = await RecognizeAsync(exe, file, o, ct);
                 if (error != null)
                     return new("", pageCount, texts.Count, error);
@@ -102,7 +117,7 @@ public static class TesseractOcr
         }
         finally
         {
-            DeleteQuietly(dir);
+            await DeleteQuietlyAsync(dir, Log);
         }
     }
 
@@ -123,7 +138,7 @@ public static class TesseractOcr
         }
         finally
         {
-            DeleteQuietly(dir);
+            await DeleteQuietlyAsync(dir, Log);
         }
     }
 
@@ -225,17 +240,80 @@ public static class TesseractOcr
         return (process.ExitCode, text.Length > 0 ? text : await errors);
     }
 
-    private static string NewTempDir()
+    private const string TempPrefix = "zwijg-ocr-";
+
+    // Unter Linux sonst 0755 und auf einem gemeinsamen /tmp für andere Benutzer lesbar
+    internal static string NewTempDir()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "zwijg-ocr-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
+        var dir = Path.Combine(Path.GetTempPath(), TempPrefix + Guid.NewGuid().ToString("N"));
+        if (OperatingSystem.IsWindows())
+            Directory.CreateDirectory(dir);
+        else
+            Directory.CreateDirectory(dir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         return dir;
     }
 
-    private static void DeleteQuietly(string dir)
+    // Nach einem Absturz oder harten Neustart bleiben Zwischenbilder liegen. Beim Start aufräumen.
+    // Nur eigene Ordner, die älter als eine Stunde sind, damit ein zweiter laufender Zwijg nicht gestört wird.
+    public static async Task<int> DeleteLeftoversAsync(ILogger log, string? tempDir = null)
     {
-        try { Directory.Delete(dir, recursive: true); }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
+        List<DirectoryInfo> dirs;
+        try
+        {
+            dirs = new DirectoryInfo(tempDir ?? Path.GetTempPath()).EnumerateDirectories(TempPrefix + "*").ToList();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            log.LogWarning("Temp-Ordner ließ sich nicht nach alten Zwischenbildern durchsuchen: {Error}", e.Message);
+            return 0;
+        }
+
+        var deleted = 0;
+        foreach (var dir in dirs)
+        {
+            var ours = dir.Name.Length == TempPrefix.Length + 32 && dir.Name[TempPrefix.Length..].All(char.IsAsciiHexDigitLower);
+            // Verknüpfungen nie folgen, die könnten sonst woanders hinzeigen
+            if (!ours || dir.LinkTarget != null || DateTime.UtcNow - dir.LastWriteTimeUtc < TimeSpan.FromHours(1))
+                continue;
+            if (await DeleteQuietlyAsync(dir.FullName, log))
+                deleted++;
+        }
+
+        if (deleted > 0)
+            log.LogInformation("{Count} alte Ordner der Texterkennung gelöscht", deleted);
+        return deleted;
+    }
+
+    // Unter Windows hält Tesseract oder ein Virenscanner die Datei manchmal noch kurz offen. Deshalb mehrmals versuchen.
+    internal static async Task<bool> DeleteQuietlyAsync(string dir, ILogger log)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                Directory.Delete(dir, recursive: true);
+                return true;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return true;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                if (attempt == 3)
+                {
+                    // Ein kaputter Logger darf das Ergebnis der Texterkennung nicht ersetzen
+                    try
+                    {
+                        log.LogWarning("Zwischenbilder der Texterkennung ließen sich nicht löschen, nächster Versuch beim Start: {Dir} ({Error})",
+                            dir, e.GetType().Name);
+                    }
+                    catch (Exception) { }
+                    return false;
+                }
+            }
+
+            await Task.Delay(attempt * 200);
+        }
     }
 }

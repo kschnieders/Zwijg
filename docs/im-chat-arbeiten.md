@@ -51,6 +51,8 @@ Ein kopierter Text verlässt die Praxis. Deshalb gelten dieselben Regeln wie fü
 
 Enthält ein PDF versteckte Anweisungen, zum Beispiel weiße Schrift auf weißem Grund, wird es blockiert und geht nicht an die KI.
 
+Als versteckt gilt weiße oder winzige Schrift, unsichtbar gesetzter Text und Text außerhalb der Seite. Das ist eine Heuristik: Text unter einem Bild, Schrift in der Farbe eines farbigen Hintergrunds oder stark gestauchte Schrift erkennt Zwijg nicht als versteckt. Bei Dokumenten aus fremder Quelle lohnt sich deshalb ein Blick nach rechts, wie die KI das Dokument sieht.
+
 ## Kleine Tricks
 
 - **Strg+Enter** schickt die Nachricht ab
