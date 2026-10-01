@@ -259,6 +259,23 @@ public class UpdateAndCompatTests(UpdateFactory factory) : IClassFixture<UpdateF
     }
 
     [Fact]
+    public void Fremde_Vorlagen_Ids_aus_alten_Einstellungen_werden_ersetzt()
+    {
+        var path = SettingsFile("""
+            { "schemaVersion": 1,
+              "users": [ { "id": "a1", "name": "admin", "username": "admin", "keyHash": "ABC", "admin": true } ],
+              "templates": [ { "id": "x\"><a href=\"https://example.com\">Hier klicken</a>", "title": "Alt", "text": "Hallo" },
+                             { "id": "0123456789", "title": "Gut", "text": "Hallo" } ] }
+            """);
+
+        var store = Store(path);
+
+        Assert.All(store.Current.Templates, t => Assert.Matches("^[0-9a-f]{10}$", t.Id));
+        Assert.Equal("0123456789", store.Current.Templates[1].Id);
+        Assert.DoesNotContain("example.com", File.ReadAllText(path));
+    }
+
+    [Fact]
     public void Einstellungen_einer_neueren_Version_lassen_sich_lesen()
     {
         var path = SettingsFile("""

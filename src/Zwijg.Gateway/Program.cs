@@ -96,6 +96,7 @@ builder.Services.AddSingleton<IAuditLog>(sp =>
 
     return new SqliteAuditLog(path, key);
 });
+builder.Services.AddSingleton<DailyLimiter>();
 builder.Services.AddSingleton<ChatPipeline>();
 builder.Services.AddSingleton<Zwijg.Gateway.History.ConversationStore>();
 builder.Services.AddHostedService<Zwijg.Gateway.History.ConversationCleanup>();

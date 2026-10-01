@@ -73,11 +73,14 @@ public static class AdminSettingsEndpoints
             }));
 
         admin.MapPut("/connections/{id}", (string id, ConnectionInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
-            ChangeAsync(ctx, store, audit, $"Verbindung {input.Name} geändert", s =>
+        {
+            var before = store.Current.Connections.FirstOrDefault(x => x.Id == id);
+            return ChangeAsync(ctx, store, audit, $"Verbindung {input.Name} geändert{DescribeMove(before, input)}", s =>
             {
                 var c = s.Connections.FirstOrDefault(x => x.Id == id) ?? throw new SettingsException("Verbindung nicht gefunden");
                 Apply(c, input, store);
-            }));
+            });
+        });
 
         admin.MapDelete("/connections/{id}", async (string id, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
         {
@@ -114,15 +117,19 @@ public static class AdminSettingsEndpoints
         });
 
         // Dasselbe mit den Eingaben aus dem Formular, bevor gespeichert wurde
-        admin.MapPost("/connections/preview/test", async (PreviewInput input, SettingsStore store, ProviderRegistry providers, CancellationToken ct) =>
+        admin.MapPost("/connections/preview/test", async (PreviewInput input, HttpContext ctx, SettingsStore store, ProviderRegistry providers,
+            IAuditLog audit, CancellationToken ct) =>
         {
             var c = FromPreview(input, store);
+            await LogPreviewAsync(ctx, audit, c, "getestet");
             return await TestAsync(providers.IsUsable(c) ? providers.CreateTemporary(c) : null, ct);
         });
 
-        admin.MapPost("/connections/preview/models", async (PreviewInput input, SettingsStore store, ProviderRegistry providers, CancellationToken ct) =>
+        admin.MapPost("/connections/preview/models", async (PreviewInput input, HttpContext ctx, SettingsStore store, ProviderRegistry providers,
+            IAuditLog audit, CancellationToken ct) =>
         {
             var c = FromPreview(input, store);
+            await LogPreviewAsync(ctx, audit, c, "nach Modellen gefragt");
             return await ModelsAsync(providers.IsUsable(c) ? providers.CreateTemporary(c) : null, ct);
         });
 
@@ -268,28 +275,57 @@ public static class AdminSettingsEndpoints
 
     private static void Apply(Connection c, ConnectionInput input, SettingsStore store)
     {
+        var moved = Moved(c, input);
         c.Name = input.Name.Trim();
         c.Preset = string.IsNullOrWhiteSpace(input.Preset) ? "custom" : input.Preset;
         c.Type = input.Type;
-        c.BaseUrl = string.IsNullOrWhiteSpace(input.BaseUrl) ? null : input.BaseUrl.Trim();
+        c.BaseUrl = UrlOf(input);
         c.Model = input.Model?.Trim() ?? "";
         c.Effort = string.IsNullOrWhiteSpace(input.Effort) ? null : input.Effort;
         c.TimeoutSeconds = input.TimeoutSeconds ?? 120;
         c.Temperature = c.Type == ConnectionTypes.Anthropic ? null : input.Temperature;
         c.OnPremise = input.OnPremise;
 
-        // Leeres Feld heißt: alten Schlüssel behalten
-        if (input.ClearApiKey)
-        {
-            c.ApiKeyProtected = null;
-            c.ApiKeyHint = null;
-        }
-        else if (!string.IsNullOrWhiteSpace(input.ApiKey))
+        // Leeres Feld heißt: alten Schlüssel behalten. Aber nicht bei neuem Typ oder neuer Adresse,
+        // sonst ginge der Schlüssel an einen anderen Server.
+        if (!input.ClearApiKey && !string.IsNullOrWhiteSpace(input.ApiKey))
         {
             c.ApiKeyProtected = store.Protect(input.ApiKey.Trim());
             c.ApiKeyHint = "..." + input.ApiKey.Trim()[^Math.Min(4, input.ApiKey.Trim().Length)..];
         }
+        else if (input.ClearApiKey || moved)
+        {
+            c.ApiKeyProtected = null;
+            c.ApiKeyHint = null;
+        }
     }
+
+    private static string? UrlOf(ConnectionInput input) =>
+        string.IsNullOrWhiteSpace(input.BaseUrl) ? null : input.BaseUrl.Trim();
+
+    private static bool Moved(Connection before, ConnectionInput input) =>
+        before.Type != input.Type || !SameUrl(before.BaseUrl, UrlOf(input));
+
+    // Für das Protokoll: neuer Typ oder neue Adresse, und ob der Schlüssel dabei wegfällt
+    private static string DescribeMove(Connection? before, ConnectionInput input)
+    {
+        if (before == null || !Moved(before, input))
+            return "";
+
+        var changes = new List<string>();
+        if (before.Type != input.Type) changes.Add($"Typ {before.Type} → {input.Type}");
+        if (!SameUrl(before.BaseUrl, UrlOf(input))) changes.Add($"Adresse {ForLog(before.BaseUrl)} → {ForLog(UrlOf(input))}");
+        if (before.ApiKeyProtected != null && !input.ClearApiKey && string.IsNullOrWhiteSpace(input.ApiKey))
+            changes.Add("gespeicherter Schlüssel entfernt");
+
+        return ": " + string.Join(", ", changes);
+    }
+
+    // Ohne Zugangsdaten und Parameter, falls jemand einen Schlüssel in die Adresse geschrieben hat
+    private static string ForLog(string? url) =>
+        url == null ? "keine"
+        : Uri.TryCreate(url, UriKind.Absolute, out var u) ? $"{u.Scheme}://{u.Authority}{u.AbsolutePath}"
+        : "ungültige Adresse";
 
     // API Schlüssel verlassen den Server nie, die Oberfläche sieht nur ob einer gesetzt ist
     private static object View(GatewaySettings s, ProviderRegistry providers) => new
@@ -427,14 +463,30 @@ public static class AdminSettingsEndpoints
         }
     }
 
-    // Beim Bearbeiten bleibt das Schlüsselfeld leer, dann den gespeicherten Schlüssel nehmen
+    // Beim Bearbeiten bleibt das Schlüsselfeld leer, dann den gespeicherten Schlüssel nehmen.
+    // Apply verwirft ihn, wenn Typ oder Adresse neu sind.
     private static Connection FromPreview(PreviewInput input, SettingsStore store)
     {
         var existing = store.Current.Connections.FirstOrDefault(c => c.Id == input.Id);
-        var c = new Connection { ApiKeyProtected = existing?.ApiKeyProtected };
+        var c = existing == null
+            ? new Connection()
+            : new Connection { Type = existing.Type, BaseUrl = existing.BaseUrl, ApiKeyProtected = existing.ApiKeyProtected };
         Apply(c, input.Connection, store);
         return c;
     }
+
+    private static bool SameUrl(string? a, string? b) =>
+        string.Equals(a?.Trim().TrimEnd('/'), b?.Trim().TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
+
+    // Ein Test schickt eine Anfrage an die eingegebene Adresse, das gehört ins Protokoll
+    private static Task LogPreviewAsync(HttpContext ctx, IAuditLog audit, Connection c, string what) =>
+        audit.WriteAsync(new AuditEntry
+        {
+            User = ApiKeyMiddleware.GetUser(ctx).Name,
+            Action = "admin",
+            Reason = $"Verbindung {c.Name} vor dem Speichern {what} ({c.Type}, Adresse {ForLog(c.BaseUrl)}, " +
+                     (c.ApiKeyProtected != null ? "mit Schlüssel)" : "ohne Schlüssel)")
+        });
 
     private static string Friendly(Exception ex) => ex switch
     {

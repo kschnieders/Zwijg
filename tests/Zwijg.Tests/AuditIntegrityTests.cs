@@ -268,7 +268,7 @@ public sealed class FailingAuditFactory : GatewayFactory
             Task.FromResult(new AuditPage([], 0));
         public Task<AuditDetail?> GetAsync(long id, CancellationToken ct = default) => Task.FromResult<AuditDetail?>(null);
         public Task<AuditVerifyResult> VerifyAsync(CancellationToken ct = default) => Task.FromResult(new AuditVerifyResult(true, 0, null));
-        public Task<int> CountRequestsAsync(string user, DateTimeOffset since, CancellationToken ct = default) => Task.FromResult(0);
+        public Task<int> CountRequestsAsync(string userId, string userName, DateTimeOffset since, CancellationToken ct = default) => Task.FromResult(0);
         public Task<IReadOnlyList<AuditStatRow>> StatRowsAsync(DateTimeOffset since, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<AuditStatRow>>([]);
     }

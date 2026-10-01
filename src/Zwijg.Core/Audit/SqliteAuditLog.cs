@@ -9,7 +9,7 @@ namespace Zwijg.Core.Audit;
 // Protokoll in einer SQLite Datei. Die Einträge sind über Hashes verkettet,
 // damit man später prüfen kann, ob etwas geändert oder gelöscht wurde.
 // Version 1: SHA-256 ohne Geheimnis, nur noch für alte Einträge.
-// Version 2: HMAC-SHA256 mit eigenem Schlüssel, jedes Feld mit Länge, Id inklusive.
+// Version 2: HMAC-SHA256 mit eigenem Schlüssel, jedes Feld mit Länge, Id inklusive, UserId wenn gesetzt.
 // Dazu ein Anker in einer eigenen Datei (Anzahl und letzter Hash), damit auch gelöschte Einträge am Ende auffallen.
 public sealed class SqliteAuditLog : IAuditLog
 {
@@ -64,14 +64,15 @@ public sealed class SqliteAuditLog : IAuditLog
             var cmd = con.CreateCommand();
             cmd.Transaction = tx;
             cmd.CommandText = """
-                INSERT INTO Audit (Timestamp, User, Action, Route, Model, Sensitivity, Entities, InjectionScore,
+                INSERT INTO Audit (Timestamp, User, UserId, Action, Route, Model, Sensitivity, Entities, InjectionScore,
                                    Blocked, Reason, Prompt, ResponseLength, DurationMs, PreviousHash, Hash, HashVersion)
-                VALUES ($ts, $user, $action, $route, $model, $sens, $ent, $inj, $blocked, $reason, $prompt,
+                VALUES ($ts, $user, $userId, $action, $route, $model, $sens, $ent, $inj, $blocked, $reason, $prompt,
                         $resp, $dur, $prev, $hash, $version);
                 SELECT last_insert_rowid();
                 """;
             cmd.Parameters.AddWithValue("$ts", FormatTime(toSave.Timestamp));
             cmd.Parameters.AddWithValue("$user", toSave.User);
+            cmd.Parameters.AddWithValue("$userId", (object?)toSave.UserId ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$action", toSave.Action);
             cmd.Parameters.AddWithValue("$route", (object?)toSave.Route ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$model", (object?)toSave.Model ?? DBNull.Value);
@@ -219,12 +220,14 @@ public sealed class SqliteAuditLog : IAuditLog
         return new AuditDetail(entry, ComputeHash(entry) == entry.Hash, entry.PreviousHash == expectedPrevious);
     }
 
-    public async Task<int> CountRequestsAsync(string user, DateTimeOffset since, CancellationToken ct = default)
+    public async Task<int> CountRequestsAsync(string userId, string userName, DateTimeOffset since, CancellationToken ct = default)
     {
         await using var con = await OpenAsync(ct);
         var cmd = new SqliteCommand(
-            "SELECT COUNT(*) FROM Audit WHERE User = $user AND Timestamp >= $since AND Action IN ('chat', 'document')", con);
-        cmd.Parameters.AddWithValue("$user", user);
+            "SELECT COUNT(*) FROM Audit WHERE (UserId = $userId OR (UserId IS NULL AND User = $user)) " +
+            "AND Timestamp >= $since AND Action IN ('chat', 'document')", con);
+        cmd.Parameters.AddWithValue("$userId", userId);
+        cmd.Parameters.AddWithValue("$user", userName);
         cmd.Parameters.AddWithValue("$since", FormatTime(since));
         return Convert.ToInt32(await cmd.ExecuteScalarAsync(ct));
     }
@@ -321,11 +324,18 @@ public sealed class SqliteAuditLog : IAuditLog
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
         }
 
-        return Mac("zwijg-audit-v2",
+        string?[] fields =
+        [
+            "zwijg-audit-v2",
             e.Id.ToString(CultureInfo.InvariantCulture), FormatTime(e.Timestamp), e.User, e.Action, e.Route, e.Model,
             e.Sensitivity, e.Entities, e.InjectionScore.ToString(CultureInfo.InvariantCulture), e.Blocked ? "1" : "0",
             e.Reason, e.Prompt, e.ResponseLength.ToString(CultureInfo.InvariantCulture),
-            e.DurationMs.ToString(CultureInfo.InvariantCulture), e.PreviousHash);
+            e.DurationMs.ToString(CultureInfo.InvariantCulture), e.PreviousHash
+        ];
+
+        // UserId kam nach Version 2 dazu. Nur wenn sie gesetzt ist, als weiteres Feld anhängen,
+        // so bleiben Einträge ohne Id gültig. Wegen der Längen lässt sich das nicht mit einem anderen Feld verwechseln.
+        return Mac(e.UserId == null ? fields : [.. fields, e.UserId]);
     }
 
     // Jedes Feld mit seiner Länge in Bytes, null mit eigenem Zeichen. So lässt sich nichts zwischen Feldern verschieben.
@@ -453,6 +463,7 @@ public sealed class SqliteAuditLog : IAuditLog
                 Id = r.GetInt64(r.GetOrdinal("Id")),
                 Timestamp = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("Timestamp")), CultureInfo.InvariantCulture),
                 User = r.GetString(r.GetOrdinal("User")),
+                UserId = GetNullable(r, "UserId"),
                 Action = r.GetString(r.GetOrdinal("Action")),
                 Route = GetNullable(r, "Route"),
                 Model = GetNullable(r, "Model"),
@@ -496,6 +507,7 @@ public sealed class SqliteAuditLog : IAuditLog
 
         // Schritt 1 ist der ursprüngliche Aufbau. Neue Spalten usw. als weitere Schritte anhängen.
         // Schritt 2: Version des Hashes je Eintrag, alte Einträge bleiben bei Version 1.
+        // Schritt 3: Benutzer Id für das Tageslimit.
         return SqliteSchema.Migrate(con, """
             CREATE TABLE IF NOT EXISTS Audit (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -519,6 +531,10 @@ public sealed class SqliteAuditLog : IAuditLog
             CREATE INDEX IF NOT EXISTS IX_Audit_User ON Audit (User);
             CREATE INDEX IF NOT EXISTS IX_Audit_User_Time ON Audit (User, Timestamp);
             """,
-            "ALTER TABLE Audit ADD COLUMN HashVersion INTEGER NOT NULL DEFAULT 1");
+            "ALTER TABLE Audit ADD COLUMN HashVersion INTEGER NOT NULL DEFAULT 1",
+            """
+            ALTER TABLE Audit ADD COLUMN UserId TEXT;
+            CREATE INDEX IF NOT EXISTS IX_Audit_UserId_Time ON Audit (UserId, Timestamp);
+            """);
     }
 }

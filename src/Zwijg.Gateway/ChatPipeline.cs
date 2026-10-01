@@ -30,6 +30,7 @@ public sealed class ChatPipeline(
     ProviderRegistry providers,
     IAuditLog audit,
     SettingsStore settings,
+    DailyLimiter limiter,
     ILogger<ChatPipeline> logger)
 {
     private const int MaxLoggedPromptLength = 4000;
@@ -68,8 +69,10 @@ public sealed class ChatPipeline(
         if (CheckFields(request) is { } invalid)
             return ChatOutcome.Error(400, invalid);
 
-        if (user.DailyLimit is { } limit && await audit.CountRequestsAsync(user.Name, StartOfToday(), ct) >= limit)
-            return ChatOutcome.Error(429, $"Dein Tageslimit von {limit} Anfragen ist erreicht. Morgen geht es weiter.");
+        // Der Platz bleibt belegt, bis der Protokolleintrag am Ende geschrieben ist
+        using var reservation = await limiter.TryReserveAsync(user, ct);
+        if (reservation == null)
+            return ChatOutcome.Error(429, $"Dein Tageslimit von {user.DailyLimit} Anfragen ist erreicht. Morgen geht es weiter.");
 
         // 1. Texte aus den Nachrichten holen
         var roles = new List<string>();
@@ -125,6 +128,7 @@ public sealed class ChatPipeline(
             await audit.WriteAsync(new AuditEntry
             {
                 User = user.Name,
+                UserId = user.Id,
                 Action = action,
                 Sensitivity = map.MaxSensitivity.ToString(),
                 Entities = map.Summary(),
@@ -167,6 +171,7 @@ public sealed class ChatPipeline(
             await audit.WriteAsync(new AuditEntry
             {
                 User = user.Name,
+                UserId = user.Id,
                 Action = action,
                 Sensitivity = map.MaxSensitivity.ToString(),
                 Entities = map.Summary(),
@@ -209,6 +214,7 @@ public sealed class ChatPipeline(
             await audit.WriteAsync(new AuditEntry
             {
                 User = user.Name,
+                UserId = user.Id,
                 Action = action,
                 Sensitivity = map.MaxSensitivity.ToString(),
                 Entities = map.Summary(),
@@ -337,6 +343,7 @@ public sealed class ChatPipeline(
         await audit.WriteAsync(new AuditEntry
         {
             User = user.Name,
+            UserId = user.Id,
             Action = action,
             Route = decision.Route.ToString(),
             Model = $"{model} ({connectionName})",
@@ -499,6 +506,7 @@ public sealed class ChatPipeline(
         audit.WriteAsync(new AuditEntry
         {
             User = user.Name,
+            UserId = user.Id,
             Action = action,
             Route = decision.Route.ToString(),
             Sensitivity = map.MaxSensitivity.ToString(),

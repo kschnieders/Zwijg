@@ -154,6 +154,7 @@ public static class DictationEndpoints
             await audit.WriteAsync(new AuditEntry
             {
                 User = ApiKeyMiddleware.GetUser(ctx).Name,
+                UserId = ApiKeyMiddleware.GetUser(ctx).Id,
                 Action = "dictation",
                 Route = "Local",
                 Model = "whisper " + dictation.Model.Id,

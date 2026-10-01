@@ -93,6 +93,53 @@ public class UserFeatureTests(GatewayFactory factory) : IClassFixture<GatewayFac
     }
 
     [Fact]
+    public async Task Tageslimit_bleibt_nach_Umbenennung_bestehen()
+    {
+        var (id, key) = await CreateUser("umbenenn-test", new { name = "umbenenn-test", admin = false, dailyLimit = 1 });
+        (await Client(key).PostAsJsonAsync("/v1/chat/completions", Chat("Eins"))).EnsureSuccessStatusCode();
+
+        (await Client().PutAsJsonAsync($"/admin/users/{id}", new { name = "umbenannt-test", admin = false, dailyLimit = 1 }))
+            .EnsureSuccessStatusCode();
+
+        var second = await Client(key).PostAsJsonAsync("/v1/chat/completions", Chat("Zwei"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, second.StatusCode);
+        var me = await Client(key).GetFromJsonAsync<JsonObject>("/v1/me");
+        Assert.Equal(1, me!["usedToday"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task Laufende_Anfragen_zaehlen_mit_bis_sie_im_Protokoll_stehen()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"zwijg-test-{Guid.NewGuid():N}.db");
+        var limiter = new Zwijg.Gateway.DailyLimiter(new Zwijg.Core.Audit.SqliteAuditLog(path));
+        var user = new Zwijg.Gateway.GatewayUser("u1", "limit", false, true, true, true, 2);
+
+        var first = await limiter.TryReserveAsync(user, default);
+        Assert.NotNull(first);
+        Assert.Equal(1, limiter.Running("u1"));
+
+        using (await limiter.TryReserveAsync(user, default))
+            Assert.Null(await limiter.TryReserveAsync(user, default));
+
+        first!.Dispose();
+        first.Dispose();
+        Assert.Equal(0, limiter.Running("u1"));
+        File.Delete(path);
+    }
+
+    [Fact]
+    public async Task Tageslimit_haelt_auch_bei_parallelen_Anfragen()
+    {
+        var (_, key) = await CreateUser("parallel-test", new { name = "parallel-test", admin = false, dailyLimit = 1 });
+
+        var results = await Task.WhenAll(Enumerable.Range(0, 10)
+            .Select(i => Client(key).PostAsJsonAsync("/v1/chat/completions", Chat("Anfrage " + i))));
+
+        Assert.Equal(1, results.Count(r => r.StatusCode == HttpStatusCode.OK));
+        Assert.Equal(9, results.Count(r => r.StatusCode == HttpStatusCode.TooManyRequests));
+    }
+
+    [Fact]
     public async Task Benachrichtigung_nur_fuer_ausgewaehlte_und_wegklickbar()
     {
         var (targetId, targetKey) = await CreateUser("hinweis-ziel");

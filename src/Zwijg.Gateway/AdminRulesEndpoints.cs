@@ -80,6 +80,7 @@ public static class AdminRulesEndpoints
 
         admin.MapPut("/templates", async (List<PromptTemplate> templates, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
         {
+            PromptTemplate.FixIds(templates);
             foreach (var t in templates)
             {
                 t.Title = t.Title.Trim();
