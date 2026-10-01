@@ -127,7 +127,7 @@ public static class UpdateEndpoints
             updates.GetAsync(refresh == true, ct));
 
         admin.MapPut("/version/check", (UpdateCheckInput input, HttpContext ctx, SettingsStore store, Zwijg.Core.Audit.IAuditLog audit) =>
-            AdminSettingsEndpoints.Change(ctx, store, audit,
+            AdminSettingsEndpoints.ChangeAsync(ctx, store, audit,
                 input.Enabled ? "Update Prüfung eingeschaltet" : "Update Prüfung ausgeschaltet",
                 s => s.UpdateCheck = input.Enabled));
     }
