@@ -10,14 +10,14 @@ public static class HealthTerms
 {
     private const RegexOptions Opts = RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase;
 
-    private static readonly Lazy<Regex> Terms = new(() => new Regex(@"\b(?:" + string.Join("|", LoadTerms()) + @")\b", Opts));
+    private static readonly Lazy<Regex> Terms = new(() => new Regex(@"\b(?:" + string.Join("|", LoadTerms()) + @")\b", Opts, RegexLimits.MatchTimeout));
 
     // Krankheiten und Eingriffe an der Endung erkennen, z.B. Gastritis, Neuralgie, Neuropathie, Appendektomie.
     // Mit Ausnahmen wie Nostalgie oder Sympathie, und mindestens drei Buchstaben davor.
     private static readonly Regex MedicalEnding = new(
         @"\b\w{3,}(?:itis|itiden|(?<!nost)algien?|ämien?|[oyi]pathien?|plasien?|ektomien?|tomien?|stomien?|skopien?|urie|" +
         @"rrhoen?|rrhö|plegien?|paresen?|penien?|zytosen?|trophien?|sklerosen?|stenosen?|lithiasis|osen?)\b",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     // Wirkstoffe an der Endung erkennen, z.B. Ramipril, Candesartan, Bisoprolol, Simvastatin, Pantoprazol.
     // Mindestens drei Buchstaben davor, sonst wäre "April" ein Medikament.
@@ -25,17 +25,17 @@ public static class HealthTerms
         @"\b\w{3,}(?:pril|sartan|olol|statin|prazol|cillin|mycin|oxacin|azepam|dipin|gliptin|gliflozin|xaban|parin|" +
         @"tidin|setron|triptan|lukast|afil|umab|izumab|ximab|tinib|semid|thiazid|dronat|ciclovir|conazol|zolam|oxetin|" +
         @"alopram|tralin|iapin|zapin|peridon|tadin|fibrat|glinid|glitazon|cyclin|profen|coxib|terol|sonid|ason|olon)\b",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     // Dosierungen wie "400 mg" oder "20 IE"
     private static readonly Regex Dosage = new(
         @"\b\d+(?:[.,]\d+)?\s?(?:mg|µg|mcg|ml|IE|I\.E\.)\b",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     // ICD-10 Codes wie J06.9 oder I10
     private static readonly Regex IcdCode = new(
         @"\b[A-TV-Z][0-9]{2}(?:\.[0-9]{1,2})?[GVAZLRB]?\b",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexLimits.MatchTimeout);
 
     public static IReadOnlyList<string> Find(string text)
     {

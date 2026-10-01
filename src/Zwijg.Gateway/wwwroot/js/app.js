@@ -93,11 +93,20 @@ function confirmDialog(title, text, yes = "Ja, weiter") {
   return new Promise(resolve => d.addEventListener("close", () => resolve(d.returnValue === "yes"), { once: true }));
 }
 
+// Der Zugangsschlüssel gilt nur, solange der Tab offen ist. Früher lag er dauerhaft im localStorage,
+// ein alter Eintrag wird einmal übernommen und dort gelöscht.
 function storage(action, value) {
   try {
-    if (action === "get") return localStorage.getItem("zwijg.key") || "";
-    if (action === "set") localStorage.setItem("zwijg.key", value);
-    if (action === "del") localStorage.removeItem("zwijg.key");
+    const old = localStorage.getItem("zwijg.key");
+    if (old !== null) {
+      localStorage.removeItem("zwijg.key");
+      if (!sessionStorage.getItem("zwijg.key")) sessionStorage.setItem("zwijg.key", old);
+    }
+  } catch { /* privater Modus */ }
+  try {
+    if (action === "get") return sessionStorage.getItem("zwijg.key") || "";
+    if (action === "set") sessionStorage.setItem("zwijg.key", value);
+    if (action === "del") sessionStorage.removeItem("zwijg.key");
   } catch { /* privater Modus, dann eben ohne merken */ }
   return "";
 }
@@ -214,12 +223,22 @@ async function enterApp(me) {
   if (me.mustChangePassword) openPasswordDialog(true);
 }
 
+const UNREACHABLE = "Zwijg ist nicht erreichbar. Bitte später noch einmal versuchen.";
+
+// Kein Netz, oder der Proxy davor meldet, dass Zwijg selbst nicht läuft
+function unreachable(res) {
+  return !res || res.status === 502 || res.status === 503 || res.status === 504;
+}
+
 async function loginWithKey(key) {
   state.key = key.trim();
-  const res = await fetch("/v1/me", { headers: authHeaders() });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
+  const res = await fetch("/v1/me", { headers: authHeaders() }).catch(() => null);
+  if (!res?.ok) {
     state.key = "";
+    if (unreachable(res)) return UNREACHABLE;
+    const data = await res.json().catch(() => ({}));
+    // Ein abgelehnter Schlüssel soll beim nächsten Öffnen nicht wieder probiert werden
+    if (res.status === 401) storage("del");
     return data.error || "Dieser Schlüssel ist nicht gültig.";
   }
   storage("set", state.key);
@@ -232,13 +251,15 @@ async function loginWithPassword(username, password, remember) {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "zwijg" },
     body: JSON.stringify({ username, password, remember }),
-  });
+  }).catch(() => null);
+  if (unreachable(res)) return UNREACHABLE;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) return data.error || "Anmeldung fehlgeschlagen";
 
   state.key = "";
   storage("del");
-  const me = await fetch("/v1/me", { headers: authHeaders() });
+  const me = await fetch("/v1/me", { headers: authHeaders() }).catch(() => null);
+  if (unreachable(me)) return UNREACHABLE;
   if (!me.ok) return "Anmeldung fehlgeschlagen";
   await enterApp(await me.json());
   return null;
@@ -246,49 +267,80 @@ async function loginWithPassword(username, password, remember) {
 
 // Beim Öffnen: gespeicherter Schlüssel oder noch laufende Sitzung
 async function resume() {
-  const saved = storage("get");
-  if (saved && !await loginWithKey(saved)) return;
+  // Meldung vom Abmelden, das die Seite neu geladen hat
+  let message;
+  try {
+    message = sessionStorage.getItem("zwijg.loginMessage") || undefined;
+    sessionStorage.removeItem("zwijg.loginMessage");
+  } catch { /* privater Modus */ }
 
-  const res = await fetch("/v1/me", { headers: authHeaders() }).catch(() => null);
-  if (res?.ok) {
-    await enterApp(await res.json());
-    return;
+  try {
+    const saved = storage("get");
+    if (saved) {
+      const error = await loginWithKey(saved);
+      if (!error) return;
+      if (error === UNREACHABLE) { showLogin(UNREACHABLE); return; }
+    }
+
+    const res = await fetch("/v1/me", { headers: authHeaders() }).catch(() => null);
+    if (unreachable(res)) { showLogin(UNREACHABLE); return; }
+    if (res.ok) {
+      await enterApp(await res.json());
+      return;
+    }
+    showLogin(message);
+  } catch {
+    showLogin(UNREACHABLE);
   }
-  showLogin();
 }
 
 function showLogin(message) {
   $("app").hidden = true;
   $("login").hidden = false;
-  $("loginError").hidden = !message;
-  $("loginError").textContent = message || "";
   $("loginPassword").value = "";
   $("loginKey").value = "";
+  // setLoginMode blendet die Fehlermeldung aus, deshalb erst danach setzen
   setLoginMode(loginMode);
+  $("loginError").hidden = !message;
+  $("loginError").textContent = message || "";
 }
 
-function logout(message) {
-  // Sitzung beim Server beenden, Fehler dabei sind egal
-  fetch("/auth/logout", { method: "POST", headers: { "X-Requested-With": "zwijg" } }).catch(() => {});
+// Abmelden lädt die Seite neu. So bleibt von der vorigen Person nichts übrig: kein Entwurf,
+// kein Dokument, keine Vorschau, keine laufende Anfrage und keine geladenen Einstellungen.
+let loggingOut = false;
+
+async function logout(message) {
   storage("del");
   state.key = "";
   state.me = null;
-  state.meJson = "";
-  versionInfo = null;
-  state.history = [];
-  state.conversationId = null;
-  state.secrets = [];
-  renderSecrets();
-  resetProtect();
-  state.convs = [];
-  state.convLoaded = false;
-  $("convList").innerHTML = "";
-  emptyChat();
+  if (loggingOut) return;
+  loggingOut = true;
+  cancelDictation();
+  // Anmeldung gleich zeigen, das Neuladen kann bei langsamem Server dauern.
+  // Anmelden geht erst nach dem Neuladen, sonst landen Reste dieser Sitzung bei der nächsten Person.
   showLogin(message);
+  $("loginForm").querySelector("button[type=submit]").disabled = true;
+
+  try { if (message) sessionStorage.setItem("zwijg.loginMessage", message); } catch { /* privater Modus */ }
+
+  // Erst nach dem Abmelden beim Server neu laden, sonst meldet resume() die alte Sitzung wieder an.
+  // Fehler dabei sind egal.
+  await fetch("/auth/logout", { method: "POST", headers: { "X-Requested-With": "zwijg" }, signal: AbortSignal.timeout?.(5000) })
+    .catch(() => {});
+
+  // Firefox stellt Formularwerte nach dem Neuladen wieder her, deshalb direkt davor leeren.
+  // Auch was während des Wartens noch eingefügt wurde.
+  for (const f of document.querySelectorAll("input, textarea, select")) {
+    if (f.type === "checkbox" || f.type === "radio") f.checked = f.defaultChecked;
+    else if (f.tagName === "SELECT") for (const o of f.options) o.selected = o.defaultSelected;
+    else f.value = f.defaultValue ?? "";
+  }
+  location.reload();
 }
 
 $("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
+  if (loggingOut) return;
   const button = $("loginForm").querySelector("button[type=submit]");
   button.disabled = true;
   try {
@@ -372,6 +424,7 @@ const UPDATE_STEPS = {
     title: "Docker",
     steps: [
       ["Im Ordner mit der docker-compose.yml ausführen. Die Daten liegen im Volume und bleiben erhalten:", "docker compose pull && docker compose up -d"],
+      ["Nur einmal nötig, wenn Zwijg danach meldet, dass es /app/data nicht ändern darf (älteres Volume, das noch root gehört). Danach wieder docker compose up -d:", "docker compose run --rm --no-deps --user root --entrypoint chown zwijg -R 1654 /app/data"],
     ],
   },
   source: {
@@ -743,7 +796,8 @@ function renderUsage() {
 }
 
 async function reloadMe() {
-  if (!state.key) return;
+  // Gilt für Schlüssel und Passwort-Sitzung, nur abgemeldet nicht
+  if (!state.me) return;
   try {
     const me = await api("GET", "/v1/me");
     const json = JSON.stringify(me);
@@ -851,8 +905,12 @@ $("prompt").addEventListener("keydown", e => {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); }
 });
 
+// Antworten können sich überholen. Angezeigt wird nur die zur letzten Anfrage.
+let previewSeq = 0;
+
 async function preview() {
   if (!state.me?.showPreview) return;
+  const seq = ++previewSeq;
   const text = $("prompt").value;
   if (!text.trim()) {
     $("preview").innerHTML = '<span class="muted">Beim Tippen erscheint hier die geschützte Fassung.</span>';
@@ -862,6 +920,7 @@ async function preview() {
 
   try {
     const r = await api("POST", "/v1/check", { text, secrets: state.secrets });
+    if (seq !== previewSeq) return;
     $("preview").innerHTML = esc(r.pseudonymized).replace(/\[[A-Z]+_\d+\]/g, m => `<mark>${m}</mark>`);
 
     const chips = Object.entries(r.entities).map(([k, v]) => chip(`${k} × ${v}`));
@@ -882,6 +941,7 @@ async function preview() {
       chips.push(chip(`Manipulationsverdacht (${r.injection.score}): ${r.injection.findings.map(f => f.rule).join(", ")}`, "warn", "alert"));
     $("chips").innerHTML = chips.join("");
   } catch (e) {
+    if (seq !== previewSeq) return;
     $("preview").innerHTML = `<span class="muted">${esc(e.message)}</span>`;
   }
 }
@@ -1024,13 +1084,21 @@ async function send() {
   $("prompt").value = "";
   autoGrow();
   preview();
-  await sendContent(text, null);
+  const ok = await sendContent(text, null);
+
+  // Bei einem Fehler den Text zurückholen, damit nichts neu getippt werden muss.
+  // Nicht nach dem Abmelden und nicht, wenn inzwischen etwas Neues im Feld steht.
+  if (!ok && state.me && !$("prompt").value) {
+    $("prompt").value = text;
+    autoGrow();
+    preview();
+  }
 }
 
 // Schickt eine Nachricht. Bei direkt ausgeführten Vorlagen steht im Chat nur die Karte (display),
-// die eigentliche Anweisung geht im Hintergrund an die KI.
+// die eigentliche Anweisung geht im Hintergrund an die KI. Gibt true zurück, wenn eine Antwort kam.
 async function sendContent(text, display) {
-  if ($("send").disabled) return;
+  if ($("send").disabled) return false;
   $("send").disabled = true;
 
   const message = { role: "user", content: text };
@@ -1052,10 +1120,10 @@ async function sendContent(text, display) {
 
     if (!res.ok) {
       state.history.pop();
-      if (res.status === 403 && data.locked) { logout(data.error); return; }
+      if (res.status === 403 && data.locked) { logout(data.error); return false; }
       const findings = (data.details?.findings || []).map(f => chip(`${f.rule}: ${f.snippet}`, "warn")).join(" ");
       addMessage("error", data.error || `Fehler ${res.status}`, findings);
-      return;
+      return false;
     }
 
     const answer = data.choices?.[0]?.message?.content ?? "";
@@ -1074,10 +1142,12 @@ async function sendContent(text, display) {
       chip(route === "Local" ? "lokal" : "Cloud", "ok", route === "Local" ? "lock" : "cloud") +
       chip(conn || data.model || "") +
       (count > 0 ? chip(`${count} Werte geschützt`, "", "shield") : ""));
+    return true;
   } catch (e) {
     typing.remove();
     state.history.pop();
     addMessage("error", e.message);
+    return false;
   } finally {
     $("send").disabled = false;
     $("prompt").focus();
@@ -1824,6 +1894,8 @@ async function stopDictation() {
     form.append("file", new Blob([encodeWav(downsample(chunks, rate))], { type: "audio/wav" }), "diktat.wav");
     form.append("language", "de");
     const r = await api("POST", "/v1/audio/transcriptions", form);
+    // Inzwischen abgemeldet: nichts mehr ins Eingabefeld schreiben
+    if (!state.me) return;
     if (!r.text) {
       toast("Nichts verstanden. Bitte etwas näher ans Mikrofon.", true);
       return;
@@ -2061,13 +2133,18 @@ function instructionInput() {
   };
 }
 
+let instructionsSeq = 0;
+
 function syncInstructions(immediate = false) {
   $("styleGrid").classList.toggle("off", !$("iEnabled").checked);
   $("iCustomCount").textContent = `${$("iCustom").value.length} / 4000`;
   clearTimeout(ruleState.previewTimer);
   ruleState.previewTimer = setTimeout(async () => {
+    // Wie im Chat: eine ältere, langsamere Antwort darf die neue Vorschau nicht überschreiben
+    const seq = ++instructionsSeq;
     try {
       const r = await api("POST", "/admin/instructions/preview", instructionInput());
+      if (seq !== instructionsSeq) return;
       const footer = $("iFooter").value.trim();
       const text = r.text + (footer ? `${NL}${NL}Unter jeder Antwort: ${footer}` : "");
       $("iPreview").textContent = text.trim() || "Keine Anweisungen. Die KI bekommt nur die Frage.";
@@ -2225,16 +2302,21 @@ function ruleInput() {
   };
 }
 
+// Auch beim Regeltest darf eine ältere Antwort die neuere nicht überschreiben
+let ruleTestSeq = 0;
+
 function syncRuleForm() {
   const label = $("rLabel").value.trim().toUpperCase() || "EIGENE";
   $("rLabelPreview").textContent = `Wird zu [${label}_1]. Nur Großbuchstaben, 2 bis 20 Zeichen.`;
 
   clearTimeout(ruleState.testTimer);
   ruleState.testTimer = setTimeout(async () => {
+    const seq = ++ruleTestSeq;
     const text = $("rTest").value;
     if (!text.trim() || !$("rPatterns").value.trim()) { $("rTestResult").innerHTML = ""; return; }
     try {
       const r = await api("POST", "/admin/rules/test", { rule: ruleInput(), text });
+      if (seq !== ruleTestSeq) return;
       if (!r.hits.length) { $("rTestResult").innerHTML = chip("kein Treffer", "", "x"); return; }
       let html = "", pos = 0;
       for (const h of r.hits.sort((a, b) => a.start - b.start)) {
@@ -2244,6 +2326,7 @@ function syncRuleForm() {
       }
       $("rTestResult").innerHTML = chip(`${r.hits.length} ${r.hits.length === 1 ? "Treffer" : "Treffer"}`, "ok", "check") + "<div>" + html + esc(text.slice(pos)) + "</div>";
     } catch (err) {
+      if (seq !== ruleTestSeq) return;
       $("rTestResult").innerHTML = chip(err.message, "warn", "alert");
     }
   }, 300);
@@ -3013,15 +3096,19 @@ async function loadAudit() {
   renderAudit();
 }
 
-// Suchbegriffe im Text markieren, nach dem Escapen, damit nichts Fremdes als HTML durchkommt
+// Suchbegriffe im Text markieren. Erst am Rohtext trennen, dann jedes Stück escapen,
+// sonst zerlegt eine Suche nach "amp" oder "39" die HTML-Entities.
 function highlight(text) {
-  let html = esc(text);
   const words = $("auditSearch").value.trim().split(/\s+/).filter(w => w.length >= 2 && !w.startsWith("#"));
-  for (const w of words) {
-    const safe = esc(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    html = html.replace(new RegExp(`(${safe})(?![^<]*>)`, "gi"), "<mark class=\"hit\">$1</mark>");
-  }
-  return html;
+  if (!words.length) return esc(text);
+
+  // Mit Klammer im Muster liefert split die Treffer an den ungeraden Stellen
+  const pattern = new RegExp("(" + words
+    .sort((a, b) => b.length - a.length)
+    .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "gi");
+  return String(text ?? "").split(pattern)
+    .map((part, i) => i % 2 ? `<mark class="hit">${esc(part)}</mark>` : esc(part))
+    .join("");
 }
 
 function statusOf(r) {

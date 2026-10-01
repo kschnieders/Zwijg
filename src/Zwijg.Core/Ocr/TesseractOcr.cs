@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using Docnet.Core;
 using Docnet.Core.Models;
+using Docnet.Core.Readers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -21,6 +22,10 @@ public static class TesseractOcr
 {
     // Etwa 250 dpi, gut für Tesseract und noch nicht zu groß im Speicher
     private const double RenderScale = 3.5;
+
+    // Höchstens rund 50 Megapixel pro Seite (A4 braucht etwa 9). Eine riesige Seite wird kleiner gerendert,
+    // sonst belegt schon eine winzige PDF mit großer Seite Gigabytes an Speicher.
+    public const double MaxPixelsPerPage = 50_000_000;
     private static readonly TimeSpan PageTimeout = TimeSpan.FromMinutes(2);
 
     // PDFium ist nicht für mehrere Threads gleichzeitig gebaut
@@ -80,21 +85,16 @@ public static class TesseractOcr
         var dir = NewTempDir();
         try
         {
-            var files = new List<string>();
+            List<string> files;
             int pageCount;
             await RenderLock.WaitAsync(ct);
             try
             {
-                using var doc = DocLib.Instance.GetDocReader(pdf, new PageDimensions(RenderScale));
-                pageCount = doc.GetPageCount();
-                for (var i = 0; i < Math.Min(pageCount, o.MaxPages); i++)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    using var page = doc.GetPageReader(i);
-                    var file = Path.Combine(dir, $"seite-{i + 1}.pgm");
-                    WriteGrayscale(file, page.GetImage(), page.GetPageWidth(), page.GetPageHeight());
-                    files.Add(file);
-                }
+                files = RenderPages(pdf, o.MaxPages, dir, out pageCount, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                return new("", 0, 0, "Die Seiten der PDF ließen sich nicht als Bild lesen");
             }
             finally
             {
@@ -164,10 +164,74 @@ public static class TesseractOcr
         return args;
     }
 
+    // Skalierung pro Seite: normal etwa 250 dpi, bei riesigen Seiten so viel kleiner, dass das Bild ins Budget passt
+    public static double ScaleFor(double widthPt, double heightPt)
+    {
+        var area = widthPt * heightPt;
+        return area > 0 ? Math.Min(RenderScale, Math.Sqrt(MaxPixelsPerPage / area)) : RenderScale;
+    }
+
+    // Seitengrößen in Punkt lesen, ohne etwas zu rendern, und daraus die Skalierung der ersten maxPages Seiten
+    public static IReadOnlyList<double> PageScales(byte[] pdf, int maxPages, out int pageCount)
+    {
+        using var probe = DocLib.Instance.GetDocReader(pdf, new PageDimensions(1.0));
+        pageCount = probe.GetPageCount();
+
+        var scales = new List<double>();
+        for (var i = 0; i < Math.Min(pageCount, maxPages); i++)
+        {
+            using var page = probe.GetPageReader(i);
+            scales.Add(ScaleFor(page.GetPageWidth(), page.GetPageHeight()));
+        }
+
+        return scales;
+    }
+
+    // Rendert die ersten maxPages Seiten als Graustufenbild in dir. Docnet serialisiert PDFium selbst,
+    // RenderLock sorgt nur dafür, dass nicht mehrere große Seitenbilder gleichzeitig im Speicher liegen.
+    public static List<string> RenderPages(byte[] pdf, int maxPages, string dir, out int pageCount, CancellationToken ct = default)
+    {
+        var files = new List<string>();
+        var scales = PageScales(pdf, maxPages, out pageCount);
+        IDocReader? doc = null;
+        var docScale = 0.0;
+        try
+        {
+            for (var i = 0; i < scales.Count; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                // Docnet skaliert pro Dokument. Bei anderer Seitengröße einen neuen Leser öffnen,
+                // aber nur einen zur Zeit, sonst liegt die PDF mehrfach im Speicher.
+                if (doc == null || scales[i] != docScale)
+                {
+                    doc?.Dispose();
+                    doc = DocLib.Instance.GetDocReader(pdf, new PageDimensions(scales[i]));
+                    docScale = scales[i];
+                }
+
+                using var page = doc.GetPageReader(i);
+                var file = Path.Combine(dir, $"seite-{i + 1}.pgm");
+                WriteGrayscale(file, page.GetImage(), page.GetPageWidth(), page.GetPageHeight());
+                files.Add(file);
+            }
+        }
+        finally
+        {
+            doc?.Dispose();
+        }
+
+        return files;
+    }
+
     // PDFium liefert BGRA mit durchsichtigem Hintergrund. Für Tesseract auf Weiß legen und in Graustufen speichern (PGM).
     public static void WriteGrayscale(string file, byte[] bgra, int width, int height)
     {
-        var gray = new byte[width * height];
+        var pixels = checked(width * height);
+        if (bgra.Length < checked(pixels * 4L))
+            throw new ArgumentException("Bild ist kleiner als angegeben", nameof(bgra));
+
+        var gray = new byte[pixels];
         for (int i = 0, p = 0; i < gray.Length; i++, p += 4)
         {
             var lum = (bgra[p] * 29 + bgra[p + 1] * 150 + bgra[p + 2] * 77) >> 8;

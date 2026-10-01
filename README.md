@@ -110,7 +110,7 @@ Die genaue Adresse steht beim Start auch in der Konsole ("Now listening on").
 - **Benachrichtigungen** (Admin): Hinweise ans Team mit Stufe, Zielgruppe und Zeitraum, erscheinen oben in der App
 - **Protokoll** (Admin): wer hat wann was gefragt, mit Echtheitsprüfung und CSV Export
 
-Anmelden geht mit Benutzername und Passwort (auf Wunsch 14 Tage angemeldet bleiben) oder mit dem Zugangsschlüssel. Wer ein Passwort hat, braucht den Schlüssel nur noch für Programme, die die API nutzen. Admins können ihn unter Benutzer entfernen, dann geht die Anmeldung nur noch mit Passwort. Admins vergeben ein Startpasswort, das beim ersten Anmelden geändert werden muss. Passwörter liegen nur als PBKDF2 Hash vor, nach mehreren Fehlversuchen wird kurz gesperrt, und Sperren oder Passwortwechsel beenden laufende Sitzungen sofort. Läuft Zwijg auf einem Server im Praxisnetz, bitte HTTPS einrichten, damit Passwörter nicht lesbar durchs Netz gehen.
+Anmelden geht mit Benutzername und Passwort (auf Wunsch 14 Tage angemeldet bleiben) oder mit dem Zugangsschlüssel. Die Anmeldung mit Schlüssel gilt nur, bis der Browser-Tab geschlossen wird, der Schlüssel wird nicht dauerhaft im Browser gespeichert. Wer ein Passwort hat, braucht den Schlüssel nur noch für Programme, die die API nutzen. Admins können ihn unter Benutzer entfernen, dann geht die Anmeldung nur noch mit Passwort. Admins vergeben ein Startpasswort, das beim ersten Anmelden geändert werden muss. Passwörter liegen nur als PBKDF2 Hash vor, nach mehreren Fehlversuchen wird kurz gesperrt, und Sperren oder Passwortwechsel beenden laufende Sitzungen sofort. Läuft Zwijg auf einem Server im Praxisnetz, bitte HTTPS einrichten, damit Passwörter nicht lesbar durchs Netz gehen.
 
 Hell oder dunkel lässt sich im Konto Menü unten links umschalten. Standard ist die Einstellung des Systems.
 
@@ -183,6 +183,8 @@ Als Admin steht in der Übersicht unter Status die installierte Version. Gibt es
 | Quellcode | `git pull`, dann neu starten |
 
 Die Skripte sichern vorher den `data` Ordner und lassen ihn unangetastet. Einstellungen, Protokoll und Verlauf haben eine Formatversion. Neue Versionen stellen ältere Dateien beim Start automatisch um und legen vorher eine Sicherung an (`settings.json.v0.bak` usw.).
+
+Docker: Das Image läuft nicht mehr als root. Bestehende Volumes brauchen beim ersten Update darauf einmal einen `chown`, siehe [Betrieb](docs/betrieb.md#umstieg-auf-eine-version-mit-docker-ohne-root-hsts-und-schlüsselschutz).
 
 ## Tests
 

@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Zwijg.Core.Audit;
 using Zwijg.Core.Pseudonymization;
 using Zwijg.Core.Routing;
@@ -37,7 +38,23 @@ public static class ProtectEndpoints
             foreach (var e in req.Known ?? [])
                 map.Seed(e.Placeholder, e.Value);
 
-            var pseudo = await pseudonymizer.PseudonymizeAsync(text, map, ct, HistoryEndpoints.ReadSecrets(req.Secrets));
+            string pseudo;
+            try
+            {
+                pseudo = await pseudonymizer.PseudonymizeAsync(text, map, ct, HistoryEndpoints.ReadSecrets(req.Secrets));
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                // Wie im Chat: nichts herausgeben und im Protokoll festhalten, damit ein Admin Angriffe sieht
+                await audit.WriteAsync(new AuditEntry
+                {
+                    User = user.Name,
+                    Action = "protect",
+                    Blocked = true,
+                    Reason = "Erkennung abgebrochen: Zeitgrenze",
+                }, ct);
+                return Results.Json(new { error = ChatPipeline.TextTooComplexMessage }, statusCode: 422);
+            }
 
             // Ein kopierter Text verlässt die Praxis wie eine Anfrage an die Cloud, deshalb gelten dieselben Regeln
             if (Refusal(user, o, text, map) is { } reason)
