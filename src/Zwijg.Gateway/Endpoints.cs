@@ -80,7 +80,8 @@ public static class Endpoints
                 messages.Add(new ChatMessage("assistant", answer));
 
                 // Bei Vorlagen "Patientenabsage · Freitag, 02.10." statt des langen Anweisungstextes
-                var first = messages.First(m => m.Role == "user");
+                // Ohne Nutzernachricht, z.B. nur eine Systemanweisung, kommt der Titel aus der Antwort
+                var first = messages.FirstOrDefault(m => m.Role == "user") ?? messages[0];
                 var title = conversationId != null ? ""
                     : first.Display is { } display ? await HistoryEndpoints.SafeDisplayTitleAsync(display, pseudonymizer, ct, secrets)
                     : await HistoryEndpoints.SafeTitleAsync(first.Content, pseudonymizer, ct, secrets);
@@ -551,8 +552,15 @@ public static class Endpoints
             ctx.Response.Headers["X-Zwijg-Connection"] = Uri.EscapeDataString(outcome.Connection);
     }
 
-    private static string Csv(string? value) =>
-        value == null ? "" : "\"" + value.Replace("\"", "\"\"").Replace("\r", " ").Replace("\n", " ") + "\"";
+    // Ein ' vorne verhindert, dass Excel und Co. Text wie =HYPERLINK(...) als Formel ausführen
+    private static string Csv(string? value)
+    {
+        if (value == null)
+            return "";
+        if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r')
+            value = "'" + value;
+        return "\"" + value.Replace("\"", "\"\"").Replace("\r", " ").Replace("\n", " ") + "\"";
+    }
 }
 
 public sealed record CheckRequest(string? Text, JsonArray? Secrets = null);

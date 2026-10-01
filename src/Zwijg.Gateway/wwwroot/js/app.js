@@ -3027,7 +3027,7 @@ $("auditVerify").addEventListener("click", async () => {
     const v = await api("GET", "/admin/audit/verify");
     $("verifyResult").innerHTML = v.ok
       ? chip(`Alle ${v.checked.toLocaleString("de-DE")} Einträge geprüft, nichts verändert`, "ok", "check")
-      : chip(`Eintrag #${v.brokenAtId} wurde nachträglich verändert oder gelöscht`, "warn", "alert");
+      : chip(v.problem || `Eintrag #${v.brokenAtId} wurde nachträglich verändert oder gelöscht`, "warn", "alert");
   } catch (e) { toast(e.message, true); }
 });
 

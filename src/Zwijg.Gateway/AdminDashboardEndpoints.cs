@@ -101,7 +101,7 @@ public static class AdminDashboardEndpoints
         // Benachrichtigungen
 
         admin.MapPost("/announcements", (AnnouncementInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
-            AdminSettingsEndpoints.Change(ctx, store, audit, $"Benachrichtigung \"{Short(input.Title)}\" angelegt", s =>
+            AdminSettingsEndpoints.ChangeAsync(ctx, store, audit, $"Benachrichtigung \"{Short(input.Title)}\" angelegt", s =>
             {
                 var a = new Announcement { CreatedBy = ApiKeyMiddleware.GetUser(ctx).Name };
                 Apply(a, input);
@@ -109,7 +109,7 @@ public static class AdminDashboardEndpoints
             }));
 
         admin.MapPut("/announcements/{id}", (string id, AnnouncementInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
-            AdminSettingsEndpoints.Change(ctx, store, audit, $"Benachrichtigung \"{Short(input.Title)}\" geändert", s =>
+            AdminSettingsEndpoints.ChangeAsync(ctx, store, audit, $"Benachrichtigung \"{Short(input.Title)}\" geändert", s =>
             {
                 var a = s.Announcements.FirstOrDefault(x => x.Id == id) ?? throw new SettingsException("Benachrichtigung nicht gefunden");
                 Apply(a, input);
@@ -117,16 +117,16 @@ public static class AdminDashboardEndpoints
 
         // Wieder allen zeigen, auch denen, die sie schon weggeklickt haben
         admin.MapPost("/announcements/{id}/reset", (string id, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
-            AdminSettingsEndpoints.Change(ctx, store, audit, "Benachrichtigung erneut an alle", s =>
+            AdminSettingsEndpoints.ChangeAsync(ctx, store, audit, "Benachrichtigung erneut an alle", s =>
             {
                 foreach (var u in s.Users)
                     u.DismissedAnnouncements.Remove(id);
             }));
 
-        admin.MapDelete("/announcements/{id}", (string id, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
+        admin.MapDelete("/announcements/{id}", async (string id, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
         {
             var title = store.Current.Announcements.FirstOrDefault(a => a.Id == id)?.Title ?? id;
-            return AdminSettingsEndpoints.Change(ctx, store, audit, $"Benachrichtigung \"{Short(title)}\" gelöscht", s =>
+            return await AdminSettingsEndpoints.ChangeAsync(ctx, store, audit, $"Benachrichtigung \"{Short(title)}\" gelöscht", s =>
             {
                 s.Announcements.RemoveAll(a => a.Id == id);
                 foreach (var u in s.Users)

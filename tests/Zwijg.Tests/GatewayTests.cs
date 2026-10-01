@@ -10,7 +10,7 @@ using Zwijg.Core.Audit;
 
 namespace Zwijg.Tests;
 
-public sealed class GatewayFactory : WebApplicationFactory<Program>
+public class GatewayFactory : WebApplicationFactory<Program>
 {
     public string DataDir { get; } = Path.Combine(Path.GetTempPath(), $"zwijg-it-{Guid.NewGuid():N}");
     public string DbPath => Path.Combine(DataDir, "audit.db");

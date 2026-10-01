@@ -20,12 +20,12 @@ public static class AdminRulesEndpoints
     {
         var admin = app.MapGroup("/admin");
 
-        admin.MapPut("/instructions", (InstructionSettings input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
+        admin.MapPut("/instructions", async (InstructionSettings input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
         {
             if (Invalid(input) is { } error)
                 return Results.BadRequest(new { error });
 
-            return AdminSettingsEndpoints.Change(ctx, store, audit,
+            return await AdminSettingsEndpoints.ChangeAsync(ctx, store, audit,
                 input.Enabled ? "Anweisungen an die KI geändert" : "Anweisungen an die KI ausgeschaltet",
                 s => s.Instructions = input);
         });
@@ -35,7 +35,7 @@ public static class AdminRulesEndpoints
             Results.Ok(new { text = InstructionComposer.Compose(input) ?? "" }));
 
         // Die Regeln werden immer als ganze Liste gespeichert, so bleibt die Reihenfolge erhalten
-        admin.MapPut("/rules", (List<ProtectionRule> rules, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
+        admin.MapPut("/rules", async (List<ProtectionRule> rules, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
         {
             foreach (var r in rules)
             {
@@ -50,7 +50,7 @@ public static class AdminRulesEndpoints
             var removed = before.Except(rules.Select(r => r.Name)).ToList();
             var detail = string.Join(", ", added.Select(n => "neu: " + n).Concat(removed.Select(n => "entfernt: " + n)));
 
-            return AdminSettingsEndpoints.Change(ctx, store, audit,
+            return await AdminSettingsEndpoints.ChangeAsync(ctx, store, audit,
                 "Schutzregeln geändert" + (detail.Length > 0 ? " (" + detail + ")" : ""),
                 s => s.ProtectionRules = rules);
         });
@@ -78,7 +78,7 @@ public static class AdminRulesEndpoints
             return Results.Ok(new { hits = hits.Select(h => new { h.Start, h.Length, h.Value }) });
         });
 
-        admin.MapPut("/templates", (List<PromptTemplate> templates, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
+        admin.MapPut("/templates", async (List<PromptTemplate> templates, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
         {
             foreach (var t in templates)
             {
@@ -86,7 +86,7 @@ public static class AdminRulesEndpoints
                 t.Text = t.Text.Trim();
             }
 
-            return AdminSettingsEndpoints.Change(ctx, store, audit, $"Vorlagen geändert ({templates.Count} Stück)",
+            return await AdminSettingsEndpoints.ChangeAsync(ctx, store, audit, $"Vorlagen geändert ({templates.Count} Stück)",
                 s => s.Templates = templates);
         });
     }

@@ -46,4 +46,8 @@ print(answer.choices[0].message.content)
 
 - Streaming wird unterstützt, die Antwort kommt aber am Stück. Zwijg braucht die ganze Antwort, um die Platzhalter sicher zurückzutauschen.
 - Bilder und Dateien in Nachrichten gehen nicht, nur Text. Dokumente laufen über `/v1/documents/ask`.
+- Werkzeuge (Function Calling) gehen nicht. Anfragen mit `tools`, `functions`, `tool_calls`, `prediction` oder `response_format` mit `json_schema` lehnt Zwijg mit Fehler 400 ab. Diese Felder enthalten freien Text, den Zwijg nicht schützen kann. In Open WebUI deshalb keine Tools für Zwijg einschalten.
+- Erlaubt sind die Rollen `system`, `user` und `assistant`. `developer` behandelt Zwijg wie `system`. Andere Rollen wie `tool` lehnt Zwijg mit Fehler 400 ab.
+- Die Schutzregeln der Praxis gelten für alle Nachrichten, auch für Systemanweisungen. Antworten des Modells im Verlauf prüft Zwijg nur auf Regeln mit „nur lokal“.
+- An den Anbieter gehen nur das Modell, die Nachrichten (Rolle und Text) und die üblichen Einstellungen wie `temperature`, `top_p`, `max_tokens`, `stop` und `response_format` mit `text` oder `json_object`. Andere Felder wie `metadata` oder `name` entfernt Zwijg.
 - Weitere Endpunkte stehen in der [README](../README.md#endpunkte).

@@ -59,7 +59,7 @@ public static class AdminSettingsEndpoints
         // Verbindungen
 
         admin.MapPost("/connections", (ConnectionInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
-            Change(ctx, store, audit, $"Verbindung {input.Name} angelegt", s =>
+            ChangeAsync(ctx, store, audit, $"Verbindung {input.Name} angelegt", s =>
             {
                 var c = new Connection();
                 Apply(c, input, store);
@@ -73,16 +73,16 @@ public static class AdminSettingsEndpoints
             }));
 
         admin.MapPut("/connections/{id}", (string id, ConnectionInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
-            Change(ctx, store, audit, $"Verbindung {input.Name} geändert", s =>
+            ChangeAsync(ctx, store, audit, $"Verbindung {input.Name} geändert", s =>
             {
                 var c = s.Connections.FirstOrDefault(x => x.Id == id) ?? throw new SettingsException("Verbindung nicht gefunden");
                 Apply(c, input, store);
             }));
 
-        admin.MapDelete("/connections/{id}", (string id, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
+        admin.MapDelete("/connections/{id}", async (string id, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
         {
             var name = store.Current.Connections.FirstOrDefault(c => c.Id == id)?.Name ?? id;
-            return Change(ctx, store, audit, $"Verbindung {name} gelöscht", s =>
+            return await ChangeAsync(ctx, store, audit, $"Verbindung {name} gelöscht", s =>
             {
                 s.Connections.RemoveAll(c => c.Id == id);
                 if (s.LocalConnectionId == id) s.LocalConnectionId = null;
@@ -91,7 +91,7 @@ public static class AdminSettingsEndpoints
         });
 
         admin.MapPut("/routes", (RoutesInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
-            Change(ctx, store, audit, "Zuordnung lokal/Cloud geändert", s =>
+            ChangeAsync(ctx, store, audit, "Zuordnung lokal/Cloud geändert", s =>
             {
                 s.LocalConnectionId = string.IsNullOrEmpty(input.LocalConnectionId) ? null : input.LocalConnectionId;
                 s.CloudConnectionId = string.IsNullOrEmpty(input.CloudConnectionId) ? null : input.CloudConnectionId;
@@ -129,7 +129,7 @@ public static class AdminSettingsEndpoints
         // Regeln
 
         admin.MapPut("/policy", (PolicyInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
-            Change(ctx, store, audit, "Regeln geändert", s =>
+            ChangeAsync(ctx, store, audit, "Regeln geändert", s =>
             {
                 if (input.Injection.PromptThreshold is < 1 or > 1000 || input.Injection.DocumentThreshold is < 1 or > 1000)
                     throw new SettingsException("Schwellen müssen zwischen 1 und 1000 liegen");
@@ -145,13 +145,13 @@ public static class AdminSettingsEndpoints
 
         // Benutzer
 
-        admin.MapPost("/users", (UserInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
+        admin.MapPost("/users", async (UserInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
         {
             if (string.IsNullOrWhiteSpace(input.Name))
                 return Results.BadRequest(new { error = "Name fehlt" });
 
             var key = SettingsStore.NewUserKey();
-            var result = Change(ctx, store, audit, $"Benutzer {input.Name.Trim()} angelegt", s =>
+            var result = await ChangeAsync(ctx, store, audit, $"Benutzer {input.Name.Trim()} angelegt", s =>
             {
                 var u = new UserRecord { KeyHash = SettingsStore.HashKey(key), KeyHint = SettingsStore.Hint(key) };
                 Apply(u, input);
@@ -162,14 +162,14 @@ public static class AdminSettingsEndpoints
             return result is IStatusCodeHttpResult { StatusCode: 200 } ? Results.Ok(new { key }) : result;
         });
 
-        admin.MapPut("/users/{id}", (string id, UserInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
+        admin.MapPut("/users/{id}", async (string id, UserInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
         {
             var me = ApiKeyMiddleware.GetUser(ctx);
             if (me.Id == id && !input.Active)
                 return Results.BadRequest(new { error = "Du kannst dich nicht selbst sperren" });
 
             var before = store.Current.Users.FirstOrDefault(u => u.Id == id);
-            return Change(ctx, store, audit, $"Benutzer {input.Name.Trim()} geändert{Describe(before, input)}", s =>
+            return await ChangeAsync(ctx, store, audit, $"Benutzer {input.Name.Trim()} geändert{Describe(before, input)}", s =>
             {
                 var u = s.Users.FirstOrDefault(x => x.Id == id) ?? throw new SettingsException("Benutzer nicht gefunden");
                 Apply(u, input);
@@ -177,11 +177,11 @@ public static class AdminSettingsEndpoints
         });
 
         // Neues Startpasswort, wird genau einmal angezeigt und muss beim Anmelden geändert werden
-        admin.MapPost("/users/{id}/password-reset", (string id, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
+        admin.MapPost("/users/{id}/password-reset", async (string id, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
         {
             var password = Passwords.Generate();
             var name = store.Current.Users.FirstOrDefault(u => u.Id == id)?.Name ?? id;
-            var result = Change(ctx, store, audit, $"Passwort für {name} zurückgesetzt", s =>
+            var result = await ChangeAsync(ctx, store, audit, $"Passwort für {name} zurückgesetzt", s =>
             {
                 var u = s.Users.FirstOrDefault(x => x.Id == id) ?? throw new SettingsException("Benutzer nicht gefunden");
                 u.PasswordHash = Passwords.Hash(password);
@@ -192,11 +192,11 @@ public static class AdminSettingsEndpoints
             return result is IStatusCodeHttpResult { StatusCode: 200 } ? Results.Ok(new { password }) : result;
         });
 
-        admin.MapPost("/users/{id}/rotate", (string id, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
+        admin.MapPost("/users/{id}/rotate", async (string id, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
         {
             var key = SettingsStore.NewUserKey();
             var name = store.Current.Users.FirstOrDefault(u => u.Id == id)?.Name ?? id;
-            var result = Change(ctx, store, audit, $"Neuer Schlüssel für {name}", s =>
+            var result = await ChangeAsync(ctx, store, audit, $"Neuer Schlüssel für {name}", s =>
             {
                 var u = s.Users.FirstOrDefault(x => x.Id == id) ?? throw new SettingsException("Benutzer nicht gefunden");
                 u.KeyHash = SettingsStore.HashKey(key);
@@ -207,10 +207,10 @@ public static class AdminSettingsEndpoints
         });
 
         // Schlüssel ganz entfernen, dann geht die Anmeldung nur noch mit Passwort
-        admin.MapDelete("/users/{id}/key", (string id, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
+        admin.MapDelete("/users/{id}/key", async (string id, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
         {
             var name = store.Current.Users.FirstOrDefault(u => u.Id == id)?.Name ?? id;
-            return Change(ctx, store, audit, $"Zugangsschlüssel von {name} entfernt", s =>
+            return await ChangeAsync(ctx, store, audit, $"Zugangsschlüssel von {name} entfernt", s =>
             {
                 var u = s.Users.FirstOrDefault(x => x.Id == id) ?? throw new SettingsException("Benutzer nicht gefunden");
                 if (u.PasswordHash == null)
@@ -227,7 +227,7 @@ public static class AdminSettingsEndpoints
                 return Results.BadRequest(new { error = "Du kannst dich nicht selbst löschen" });
 
             var name = store.Current.Users.FirstOrDefault(u => u.Id == id)?.Name ?? id;
-            var result = Change(ctx, store, audit, $"Benutzer {name} gelöscht", s => s.Users.RemoveAll(u => u.Id == id));
+            var result = await ChangeAsync(ctx, store, audit, $"Benutzer {name} gelöscht", s => s.Users.RemoveAll(u => u.Id == id));
 
             // Gespeicherte Unterhaltungen der Person gleich mit löschen
             if (result is IStatusCodeHttpResult { StatusCode: 200 })
@@ -236,7 +236,7 @@ public static class AdminSettingsEndpoints
         });
     }
 
-    internal static IResult Change(HttpContext ctx, SettingsStore store, IAuditLog audit, string description, Action<GatewaySettings> change)
+    internal static async Task<IResult> ChangeAsync(HttpContext ctx, SettingsStore store, IAuditLog audit, string description, Action<GatewaySettings> change)
     {
         try
         {
@@ -247,13 +247,21 @@ public static class AdminSettingsEndpoints
             return Results.BadRequest(new { error = ex.Message });
         }
 
-        // Nicht auf das Protokoll warten, die Änderung ist schon gespeichert
-        _ = audit.WriteAsync(new AuditEntry
+        // Die Änderung ist schon gespeichert, also trotzdem Ok. Klappt das Protokoll nicht, muss es wenigstens im Log stehen.
+        try
         {
-            User = ApiKeyMiddleware.GetUser(ctx).Name,
-            Action = "admin",
-            Reason = description
-        });
+            await audit.WriteAsync(new AuditEntry
+            {
+                User = ApiKeyMiddleware.GetUser(ctx).Name,
+                Action = "admin",
+                Reason = description
+            });
+        }
+        catch (Exception ex)
+        {
+            ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Zwijg.Audit")
+                .LogError(ex, "Admin Änderung nicht im Protokoll: {Description}", description);
+        }
 
         return Results.Ok(new { ok = true });
     }
