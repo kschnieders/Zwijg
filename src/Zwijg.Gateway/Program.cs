@@ -33,6 +33,7 @@ builder.Services.AddOptions<KeyManagementOptions>()
 builder.Services.AddSingleton<SettingsStore>();
 builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddSingleton<UpdateChecker>();
+builder.Services.AddSingleton<DictationService>();
 
 // Anmeldung mit Benutzername und Passwort: verschlüsseltes Cookie, für Skripte unlesbar,
 // nur von der eigenen Seite mitgeschickt. Die Schlüssel dafür liegen bei den anderen Data Protection Schlüsseln.

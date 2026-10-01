@@ -247,7 +247,8 @@ public static class Endpoints
         });
 
         // Alles, was die Oberfläche über den angemeldeten Benutzer wissen muss
-        app.MapGet("/v1/me", async (HttpContext ctx, SettingsStore settings, IAuditLog audit, CancellationToken ct) =>
+        app.MapGet("/v1/me", async (HttpContext ctx, SettingsStore settings, IAuditLog audit, DictationService dictation,
+            CancellationToken ct) =>
         {
             var user = ApiKeyMiddleware.GetUser(ctx);
             var record = settings.Current.Users.FirstOrDefault(u => u.Id == user.Id);
@@ -265,6 +266,7 @@ public static class Endpoints
                 viaSession = user.ViaSession,
                 admin = user.IsAdmin,
                 showPreview = user.ShowPreview,
+                dictation = dictation.Ready,
                 canUseDocuments = user.CanUseDocuments,
                 cloudAllowed = user.CloudAllowed,
                 dailyLimit = user.DailyLimit,
@@ -302,6 +304,7 @@ public static class Endpoints
         app.MapUpdates();
         app.MapProtect();
         app.MapOcr();
+        app.MapDictation();
         app.MapAdminRules();
         app.MapHistory();
         app.MapAuth();
@@ -438,7 +441,7 @@ public static class Endpoints
         e.Blocked ? AuditStatus.Blocked
         : e.Reason?.StartsWith("Anbieterfehler") == true || e.Reason?.StartsWith("Kein Anbieter") == true ? AuditStatus.Error
         : e.Reason?.StartsWith("Warnung") == true ? AuditStatus.Warning
-        : e.Action is "chat" or "document" or "protect" ? AuditStatus.Ok
+        : e.Action is "chat" or "document" or "protect" or "dictation" ? AuditStatus.Ok
         : null;
 
     private static object View(AuditEntry e) => new

@@ -41,12 +41,13 @@ Für die Aufnahme lieferte ein Demo Modell eine feste Antwort. Erkennung, Platzh
 - **Gesundheitsdaten**: über 1.100 Fachbegriffe auf Deutsch und Latein, typische Endungen wie -itis oder -ektomie, Wirkstoffe, Messwerte und ICD Codes werden erkannt. Sie bleiben im Text stehen, aber Person plus Gesundheit gilt immer als hoch sensibel und bleibt lokal
 - **Schutz vor Prompt Injection**: verdächtige Anweisungen werden blockiert, auch versteckter Text in PDFs (weiße oder winzige Schrift) und unsichtbare Unicode Zeichen
 - **Texterkennung**: eingescannte oder gefaxte PDFs und Fotos von Befunden werden lokal mit Tesseract gelesen und danach genauso geschützt
+- **Diktieren**: im Chat sprechen statt tippen, Whisper schreibt lokal mit, die Aufnahme verlässt die Praxis nicht
 - **Protokoll**: wer hat wann was gefragt, nur pseudonymisiert gespeichert, mit Hashkette gegen nachträgliche Änderungen
 - **Lokal oder Cloud**: sensible Anfragen gehen an ein lokales Modell (z.B. Ollama), harmlose dürfen in die Cloud
 
 ## Anleitungen
 
-Kurze Anleitungen für den Alltag stehen unter [docs](docs/README.md): erste Schritte, lokale KI einbinden, Cloud Anbieter, im Chat arbeiten, Texterkennung für Scans, Schutz anpassen, andere Programme anbinden und Betrieb in der Praxis.
+Kurze Anleitungen für den Alltag stehen unter [docs](docs/README.md): erste Schritte, lokale KI einbinden, Cloud Anbieter, im Chat arbeiten, Texterkennung für Scans, Diktieren, Schutz anpassen, andere Programme anbinden und Betrieb in der Praxis.
 
 ## Herunterladen
 
@@ -203,7 +204,7 @@ Die Erkennung läuft in zwei Stufen. Zuerst Regeln: rund 1.200 Vornamen und 1.20
 
 In drei Prüfkatalogen mit 164 Stellen aus typischen Praxistexten erkennen die Regeln alles, ohne ein normales Wort zu ersetzen. Der Katalog läuft bei jedem Test mit (`DetectionBenchmarkTests`). Ganz ohne Lücken geht es trotzdem nicht: Ein seltener Nachname, der allein und ohne jeden Zusammenhang im Satz steht, sieht für Regeln aus wie ein normales Wort. Dafür kann zusätzlich das lokale Modell suchen (unter Regeln einschalten). Das kostet pro neuem Text etwa 0,3 Sekunden. Eigene Listen für Namen und Orte aus der Umgebung helfen ebenfalls.
 
-Für Scans und Fotos braucht es Tesseract auf dem Rechner, siehe [Texterkennung](docs/texterkennung.md). Handschrift erkennt Tesseract kaum. Streaming geht, die Antwort kommt aber am Stück, weil Zwijg erst die ganze Antwort braucht, um die Platzhalter sicher zurückzutauschen.
+Für Scans und Fotos braucht es Tesseract auf dem Rechner, siehe [Texterkennung](docs/texterkennung.md). Handschrift erkennt Tesseract kaum. Das Mikrofon zum Diktieren gibt der Browser nur über HTTPS oder auf localhost frei, siehe [Diktieren](docs/diktieren.md). Streaming geht, die Antwort kommt aber am Stück, weil Zwijg erst die ganze Antwort braucht, um die Platzhalter sicher zurückzutauschen.
 
 ## Haftungsausschluss
 
