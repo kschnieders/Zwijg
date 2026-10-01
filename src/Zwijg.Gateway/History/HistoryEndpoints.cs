@@ -69,7 +69,7 @@ public static partial class HistoryEndpoints
             var detail = input.Enabled
                 ? $"{input.MaxConversations} Unterhaltungen, {input.RetentionDays} Tage, {input.MaxPinned} angepinnt"
                 : "ausgeschaltet, alle Verläufe gelöscht";
-            var result = AdminSettingsEndpoints.Change(ctx, settings, audit, $"Verlauf geändert: {detail}", s => s.History = input);
+            var result = await AdminSettingsEndpoints.ChangeAsync(ctx, settings, audit, $"Verlauf geändert: {detail}", s => s.History = input);
 
             if (result is IStatusCodeHttpResult { StatusCode: 200 })
                 await store.CleanupAsync(ct);

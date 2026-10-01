@@ -19,6 +19,9 @@ public sealed record AuditEntry
     public long DurationMs { get; init; }
     public string PreviousHash { get; init; } = "";
     public string Hash { get; init; } = "";
+
+    // 1: alter SHA-256 ohne Schlüssel, 2: HMAC mit Schlüssel. Wird beim Schreiben gesetzt.
+    public int HashVersion { get; init; }
 }
 
 public enum AuditStatus
@@ -45,7 +48,8 @@ public sealed record AuditPage(IReadOnlyList<AuditEntry> Items, int Total);
 // Ein Eintrag mit Prüfung, ob er selbst und seine Verkettung zum Vorgänger unverändert sind
 public sealed record AuditDetail(AuditEntry Entry, bool HashValid, bool ChainValid);
 
-public sealed record AuditVerifyResult(bool Ok, int Checked, long? BrokenAtId);
+// Problem beschreibt Fehler, die keinem einzelnen Eintrag zuzuordnen sind, z.B. eine fehlende Ankerdatei
+public sealed record AuditVerifyResult(bool Ok, int Checked, long? BrokenAtId, string? Problem = null);
 
 // Schlanke Zeile für Statistiken, ohne Prompt
 public sealed record AuditStatRow(

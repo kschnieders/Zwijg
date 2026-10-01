@@ -80,7 +80,8 @@ public static class Endpoints
                 messages.Add(new ChatMessage("assistant", answer));
 
                 // Bei Vorlagen "Patientenabsage · Freitag, 02.10." statt des langen Anweisungstextes
-                var first = messages.First(m => m.Role == "user");
+                // Ohne Nutzernachricht, z.B. nur eine Systemanweisung, kommt der Titel aus der Antwort
+                var first = messages.FirstOrDefault(m => m.Role == "user") ?? messages[0];
                 var title = conversationId != null ? ""
                     : first.Display is { } display ? await HistoryEndpoints.SafeDisplayTitleAsync(display, pseudonymizer, ct, secrets)
                     : await HistoryEndpoints.SafeTitleAsync(first.Content, pseudonymizer, ct, secrets);
@@ -120,16 +121,21 @@ public static class Endpoints
             var map = new PseudonymMap();
             var pseudo = await pseudonymizer.PseudonymizeAsync(clean, map, ct);
 
-            var injection = detector.Scan(doc.Text).Combine(doc.HiddenFindings);
+            var injection = detector.Scan(doc.Text).Combine(doc.HiddenFindings).Combine(CheckDocumentTags(doc.Text));
             var injectionBlocks = injection.Score >= s.Injection.DocumentThreshold && s.Injection.Action == InjectionAction.Block;
 
             var rules = RuleEngine.Find(clean, s.ProtectionRules, a => a != RuleAction.Replace)
                 .Select(h => h.Rule).DistinctBy(r => r.Id).ToList();
             var blockRule = rules.FirstOrDefault(r => r.Action == RuleAction.Block);
 
-            var route = new RoutingPolicy(s.Routing).Decide(map.MaxSensitivity, hasDocument: true).Route;
-            if (!user.CloudAllowed || rules.Any(r => r.Action == RuleAction.LocalOnly))
+            var decision = new RoutingPolicy(s.Routing).Decide(map.MaxSensitivity, hasDocument: true);
+            var route = decision.Route;
+            if (!user.CloudAllowed || rules.Any(r => r.Action == RuleAction.LocalOnly) || SlowReplace(clean, s.ProtectionRules))
+            {
+                // Wie in der Pipeline: Was ohnehin lokal bleibt, blockiert "Nur Cloud" nicht
                 route = RouteTarget.Local;
+                decision = decision with { Blocked = false };
+            }
 
             const int maxPreview = 60_000;
             return Results.Ok(new
@@ -148,10 +154,11 @@ public static class Endpoints
                 route = route.ToString(),
                 injection = new { score = injection.Score, threshold = s.Injection.DocumentThreshold, findings = injection.Findings },
                 rules = rules.Select(r => new { r.Name, r.Action }),
-                blocked = injectionBlocks || blockRule != null,
+                blocked = injectionBlocks || blockRule != null || decision.Blocked,
                 blockedReason = blockRule != null
                     ? $"Schutzregel \"{blockRule.Name}\""
-                    : injectionBlocks ? "Möglicher Manipulationsversuch im Dokument" : null,
+                    : injectionBlocks ? "Möglicher Manipulationsversuch im Dokument"
+                    : decision.Blocked ? $"Weiterleitung steht auf Nur Cloud, aber {decision.Reason}" : null,
             });
         }).DisableAntiforgery();
 
@@ -180,8 +187,8 @@ public static class Endpoints
             if (doc.Error != null)
                 return Results.Json(new { error = doc.Error }, statusCode: doc.ErrorStatus);
 
-            var documentText = doc.Text;
-            var extra = doc.HiddenFindings;
+            var documentText = NeutralizeDocumentTags(doc.Text);
+            var extra = doc.HiddenFindings.Combine(CheckDocumentTags(doc.Text));
             var hiddenRemoved = doc.HiddenText.Length > 0;
 
             var request = new JsonObject
@@ -230,9 +237,14 @@ public static class Endpoints
                 .Select(h => h.Rule).DistinctBy(r => r.Id).ToList();
 
             var user = ApiKeyMiddleware.GetUser(ctx);
-            var route = new RoutingPolicy(settings.Current.Routing).Decide(map.MaxSensitivity, false).Route;
-            if (!user.CloudAllowed || rules.Any(r => r.Action == RuleAction.LocalOnly))
+            var decision = new RoutingPolicy(settings.Current.Routing).Decide(map.MaxSensitivity, false);
+            var route = decision.Route;
+            if (!user.CloudAllowed || rules.Any(r => r.Action == RuleAction.LocalOnly) || SlowReplace(clean, settings.Current.ProtectionRules))
+            {
+                // Wie in der Pipeline: Was ohnehin lokal bleibt, blockiert "Nur Cloud" nicht
                 route = RouteTarget.Local;
+                decision = decision with { Blocked = false };
+            }
 
             return Results.Ok(new
             {
@@ -241,6 +253,7 @@ public static class Endpoints
                 sensitivity = map.MaxSensitivity.ToString(),
                 healthTerms = map.HealthTerms,
                 route = route.ToString(),
+                blocked = decision.Blocked,
                 rules = rules.Select(r => new { r.Name, r.Action }),
                 injection = new { score = injection.Score, findings = injection.Findings }
             });
@@ -470,6 +483,29 @@ public static class Endpoints
         return new InjectionResult(findings.Sum(f => f.Weight), findings);
     }
 
+    // Das Dokument steht zwischen <dokument> und </dokument>. Eigene Tags darin könnten den Block vorzeitig beenden.
+    // Unsichtbare Zeichen wie in TextSanitizer zählen nicht, die Pipeline entfernt sie erst später.
+    private const string InvisibleChars = @"\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF";
+    private const string Invisible = @"(?:[" + InvisibleChars + @"]|\uDB40[\uDC00-\uDC7F])*";
+    private const string Gap = @"(?:[\s" + InvisibleChars + @"]|\uDB40[\uDC00-\uDC7F])*";
+
+    private static readonly System.Text.RegularExpressions.Regex DocumentTag = new(
+        "<" + Gap + "/?" + Gap + string.Join(Invisible, "dokument".ToCharArray()) + @"\b[^<>]*>",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private static InjectionResult CheckDocumentTags(string text) =>
+        DocumentTag.Match(text) is { Success: true } m
+            ? new InjectionResult(50, [new InjectionFinding("chat-template-token", 50, m.Value)])
+            : InjectionResult.Empty;
+
+    // Wie in der Pipeline: Eine zu langsame Ersetzen-Regel hält die Anfrage lokal
+    private static bool SlowReplace(string text, IEnumerable<ProtectionRule> rules) =>
+        RuleEngine.Find(text, rules, a => a == RuleAction.Replace).Any(h => h.TimedOut);
+
+    // Spitze Klammern durch ähnlich aussehende Zeichen ersetzen, der Text bleibt lesbar
+    private static string NeutralizeDocumentTags(string text) =>
+        DocumentTag.Replace(text, m => m.Value.Replace('<', '‹').Replace('>', '›'));
+
     private static bool IsPdf(IFormFile file) =>
         file.ContentType.Contains("pdf", StringComparison.OrdinalIgnoreCase)
         || file.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
@@ -519,8 +555,15 @@ public static class Endpoints
             ctx.Response.Headers["X-Zwijg-Connection"] = Uri.EscapeDataString(outcome.Connection);
     }
 
-    private static string Csv(string? value) =>
-        value == null ? "" : "\"" + value.Replace("\"", "\"\"").Replace("\r", " ").Replace("\n", " ") + "\"";
+    // Ein ' vorne verhindert, dass Excel und Co. Text wie =HYPERLINK(...) als Formel ausführen
+    private static string Csv(string? value)
+    {
+        if (value == null)
+            return "";
+        if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r')
+            value = "'" + value;
+        return "\"" + value.Replace("\"", "\"\"").Replace("\r", " ").Replace("\n", " ") + "\"";
+    }
 }
 
 public sealed record CheckRequest(string? Text, JsonArray? Secrets = null);

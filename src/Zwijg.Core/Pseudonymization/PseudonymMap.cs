@@ -9,6 +9,23 @@ public sealed class PseudonymMap
     private static readonly Regex PlaceholderPattern = new(
         @"\[\s*(?<label>[A-Z]+)_(?<n>\d+)\s*\]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // Link- und Bildadressen: Markdown Ziele und Referenzen, <...> Links, Adressen mit :// oder //,
+    // HTML Attribute mit Adressen und CSS url(). Die Liste ist nicht vollständig, der eigentliche Schutz
+    // gegen nachgeladene Adressen liegt beim Client (z.B. CSP oder Anzeige als reiner Text).
+    private static readonly Regex LinkPattern = new(
+        @"\]\([ \t]*(?:<[^>\n]*>|[^)\s]*)" +
+        @"|^[ ]{0,3}\[[^\]\n]+\]:(?>[ \t]*)(?:\r?\n(?>[ \t]*))?(?:<[^>\n]*>|\S+)" +
+        @"|<[a-z][a-z0-9+.-]{0,63}:[^<>\s]*>" +
+        @"|\b[a-z][a-z0-9+.-]{0,63}://[^\s<>""'`]*" +
+        @"|(?<![\w:/])//[^\s<>""'`]*" +
+        @"|\b(?:src|srcset|href|poster|background|data|action|formaction|ping|cite|longdesc|content)\s*=\s*(?:""[^""]*""|'[^']*'|[^\s>]*)" +
+        @"|\burl\([^()]*\)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Multiline,
+        TimeSpan.FromMilliseconds(500));
+
+    // Größere Nummern erreicht der Zähler nie, sie müssen nicht reserviert werden
+    private const int MaxReserved = 1_000_000;
+
     private readonly Dictionary<string, string> _byValue = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _byPlaceholder = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _counter = new(StringComparer.Ordinal);
@@ -82,15 +99,58 @@ public sealed class PseudonymMap
         _byPlaceholder[placeholder] = value;
     }
 
+    // Platzhalter, die schon in der Eingabe stehen (z.B. aus "Text schützen"), belegen ihre Nummer.
+    // Sonst bekäme ein neuer Name dieselbe Nummer und beim Zurücksetzen würden Patienten verwechselt.
+    public void Reserve(string text)
+    {
+        foreach (Match m in PlaceholderPattern.Matches(text))
+        {
+            if (!int.TryParse(m.Groups["n"].Value, System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture, out var n) || n > MaxReserved)
+                continue;
+
+            var label = m.Groups["label"].Value;
+            _counter[label] = Math.Max(_counter.GetValueOrDefault(label), n);
+        }
+    }
+
     // Setzt die echten Werte wieder ein. Etwas tolerant, falls das Modell
     // Leerzeichen in die Klammern packt, z.B. "[ NAME_1 ]".
-    public string Restore(string text)
+    // In Links und Bildadressen bleibt der Platzhalter stehen. Sonst könnte das Modell echte Daten in eine
+    // Adresse schreiben, die der Client beim Anzeigen lädt, z.B. ![x](https://example.com/?p=[NAME_1]).
+    public string Restore(string text) => Restore(text, out _);
+
+    // skipped ist true, wenn die Link-Erkennung zu lange brauchte und deshalb nichts eingesetzt wurde
+    public string Restore(string text, out bool skipped)
     {
+        skipped = false;
         if (_byPlaceholder.Count == 0 || string.IsNullOrEmpty(text))
             return text;
 
+        MatchCollection links;
+        try
+        {
+            links = LinkPattern.Matches(text);
+
+            // Matches sucht erst bei Bedarf. Count erzwingt die Suche hier, damit ein Timeout im catch landet.
+            _ = links.Count;
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            // Lieber gar nichts einsetzen als echte Daten in einer Adresse
+            skipped = true;
+            return text;
+        }
+
+        // Replace geht von vorn nach hinten, also reicht ein Zeiger durch die Links
+        var next = 0;
         return PlaceholderPattern.Replace(text, m =>
         {
+            while (next < links.Count && links[next].Index + links[next].Length <= m.Index)
+                next++;
+            if (next < links.Count && links[next].Index < m.Index + m.Length)
+                return m.Value;
+
             var key = $"[{m.Groups["label"].Value}_{m.Groups["n"].Value}]";
             return _byPlaceholder.TryGetValue(key, out var original) ? original : m.Value;
         });

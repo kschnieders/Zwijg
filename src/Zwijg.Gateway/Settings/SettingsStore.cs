@@ -181,6 +181,11 @@ public sealed class SettingsStore
         if (!System.Text.RegularExpressions.Regex.IsMatch(s.Ocr.Languages ?? "", @"^[a-z_]{3,20}(\+[a-z_]{3,20}){0,5}$"))
             throw new SettingsException("Sprachen bitte wie deu oder deu+eng angeben");
 
+        if (!Enum.IsDefined(s.Routing.Mode) || !Enum.IsDefined(s.Routing.CloudMaxSensitivity) || !Enum.IsDefined(s.Injection.Action))
+            throw new SettingsException("Unbekannter Wert bei der Weiterleitung oder beim Manipulationsschutz");
+        if (s.ProtectionRules.Any(r => !Enum.IsDefined(r.Action)))
+            throw new SettingsException("Unbekannte Aktion bei einer Schutzregel");
+
         if (s.Users.Any(u => u.DailyLimit is < 1 or > 100_000))
             throw new SettingsException("Das Tageslimit muss zwischen 1 und 100000 liegen");
 

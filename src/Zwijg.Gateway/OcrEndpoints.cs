@@ -21,7 +21,7 @@ public static class OcrEndpoints
         });
 
         admin.MapPut("/ocr", (OcrInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
-            AdminSettingsEndpoints.Change(ctx, store, audit,
+            AdminSettingsEndpoints.ChangeAsync(ctx, store, audit,
                 input.Enabled ? "Texterkennung eingestellt" : "Texterkennung ausgeschaltet",
                 s => s.Ocr = new OcrSettings
                 {

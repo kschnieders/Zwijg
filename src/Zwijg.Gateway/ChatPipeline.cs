@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Zwijg.Gateway.Settings;
 using Zwijg.Core.Audit;
@@ -37,6 +38,16 @@ public sealed class ChatPipeline(
         "Hinweis: Platzhalter in eckigen Klammern wie [NAME_1] oder [GEBURTSDATUM_1] stehen für echte Daten. " +
         "Übernimm sie unverändert in deine Antwort und versuche nicht, sie aufzulösen.";
 
+    // Einstellungen, die an den Anbieter gehen. stop ist freier Text und wird deshalb extra geschützt.
+    private static readonly string[] IntegerFields = ["max_tokens", "max_completion_tokens", "seed", "n"];
+    private static readonly string[] NumberFields = [.. IntegerFields, "temperature", "top_p", "frequency_penalty", "presence_penalty"];
+
+    // Andere Rollen wie "tool" gehören zu Tool Aufrufen oder würden Injection Prüfung und Schutzregeln umgehen
+    private static readonly string[] Roles = ["system", "developer", "user", "assistant"];
+
+    // Diese Felder tragen freien Text und ändern, was das Modell tut. Still entfernen würde die Antwort verfälschen.
+    private static readonly string[] RejectedFields = ["tools", "tool_choice", "functions", "function_call", "prediction"];
+
     public async Task<ChatOutcome> RunAsync(
         GatewayUser user,
         JsonObject request,
@@ -54,6 +65,9 @@ public sealed class ChatPipeline(
         if (request["messages"] is not JsonArray messages || messages.Count == 0)
             return ChatOutcome.Error(400, "messages fehlt oder ist leer");
 
+        if (CheckFields(request) is { } invalid)
+            return ChatOutcome.Error(400, invalid);
+
         if (user.DailyLimit is { } limit && await audit.CountRequestsAsync(user.Name, StartOfToday(), ct) >= limit)
             return ChatOutcome.Error(429, $"Dein Tageslimit von {limit} Anfragen ist erreicht. Morgen geht es weiter.");
 
@@ -62,8 +76,21 @@ public sealed class ChatPipeline(
         var texts = new List<string>();
         foreach (var node in messages)
         {
-            var role = node?["role"]?.GetValue<string>() ?? "";
-            var text = ReadContent(node?["content"]);
+            if (node is not JsonObject message)
+                return ChatOutcome.Error(400, "Jede Nachricht muss ein Objekt mit role und content sein");
+
+            if (message["role"] is not JsonValue r || !r.TryGetValue<string>(out var role) || !Roles.Contains(role))
+                return ChatOutcome.Error(400, $"role muss {string.Join(", ", Roles)} sein");
+
+            // Open WebUI schickt bei neueren OpenAI Modellen "developer" statt "system"
+            if (role == "developer")
+                role = "system";
+
+            // Tool Aufrufe tragen freien Text, den Zwijg nicht schützen kann
+            if (message.FirstOrDefault(p => p.Key is "tool_calls" or "function_call" && p.Value != null).Key is { } toolField)
+                return ChatOutcome.Error(400, Unsupported(toolField));
+
+            var text = ReadContent(message["content"]);
             if (text == null)
                 return ChatOutcome.Error(400, "Nur Textinhalte werden unterstützt");
 
@@ -71,18 +98,23 @@ public sealed class ChatPipeline(
             texts.Add(text);
         }
 
-        // 2. Auf Injection prüfen, nur was vom Nutzer oder aus Tools kommt
+        // 2. Auf Injection prüfen, nur was vom Nutzer kommt
         var injection = extraFindings ?? InjectionResult.Empty;
         for (var i = 0; i < texts.Count; i++)
         {
-            if (roles[i] is "user" or "tool")
+            if (roles[i] == "user")
                 injection = injection.Combine(injectionDetector.Scan(texts[i]));
         }
 
         // 3. Unsichtbare Zeichen raus und pseudonymisieren
         var map = new PseudonymMap();
         var cleaned = texts.Select(t => TextSanitizer.Clean(t).Text).ToList();
-        var pseudo = await pseudonymizer.PseudonymizeAsync(cleaned, map, ct, secrets);
+
+        // stop ist freier Text und läuft deshalb mit durch Pseudonymisierung und Schutzregeln
+        var stops = ReadStops(request["stop"]).Select(s => TextSanitizer.Clean(s).Text).ToList();
+        var all = await pseudonymizer.PseudonymizeAsync([.. cleaned, .. stops], map, ct, secrets);
+        var pseudo = all.Take(cleaned.Count).ToList();
+        var pseudoStops = all.Skip(cleaned.Count).ToList();
         var loggedPrompt = o.StorePrompts ? LastUserText(roles, pseudo) : null;
 
         var threshold = hasDocument ? o.Injection.DocumentThreshold : o.Injection.PromptThreshold;
@@ -109,11 +141,25 @@ public sealed class ChatPipeline(
 
         // Eigene Schutzregeln der Praxis. "Ersetzen" lief schon über die Pseudonymisierung.
         var ruleHits = new List<RuleHit>();
-        for (var i = 0; i < texts.Count; i++)
+        // Antworten des Modells nur für "nur lokal" prüfen. Mit Blockieren hinge das Gespräch sonst fest,
+        // sobald das Modell einmal ein gesperrtes Wort schreibt.
+        for (var i = 0; i < cleaned.Count; i++)
         {
-            if (roles[i] is "user" or "tool")
-                ruleHits.AddRange(RuleEngine.Find(cleaned[i], o.ProtectionRules, a => a != RuleAction.Replace));
+            var assistant = roles[i] == "assistant";
+            ruleHits.AddRange(RuleEngine.Find(cleaned[i], o.ProtectionRules,
+                a => assistant ? a == RuleAction.LocalOnly : a != RuleAction.Replace));
         }
+        foreach (var text in stops)
+            ruleHits.AddRange(RuleEngine.Find(text, o.ProtectionRules, a => a != RuleAction.Replace));
+
+        // Zu langsame Ersetzen-Regel: Der Wert steht womöglich noch im Klartext, also nicht in die Cloud
+        var slowReplaceHits = cleaned
+            .SelectMany(t => RuleEngine.Find(t, o.ProtectionRules, a => a == RuleAction.Replace))
+            .Where(h => h.TimedOut).ToList();
+        var slowReplace = string.Join(", ", slowReplaceHits.Select(h => h.Rule.Name).Distinct());
+        var slow = ruleHits.Where(h => h.TimedOut).Concat(slowReplaceHits).Select(h => h.Rule.Name).Distinct().ToList();
+        if (slow.Count > 0)
+            logger.LogWarning("Schutzregel zu langsam, gilt als getroffen: {Rules}", string.Join(", ", slow));
 
         var blockedBy = ruleHits.FirstOrDefault(h => h.Rule.Action == RuleAction.Block)?.Rule;
         if (blockedBy != null)
@@ -133,7 +179,9 @@ public sealed class ChatPipeline(
 
             // Den gefundenen Text nicht zurückgeben, er könnte genau das Geheimnis sein
             return ChatOutcome.Error(400,
-                string.IsNullOrWhiteSpace(blockedBy.Message)
+                string.IsNullOrWhiteSpace(blockedBy.Message) && ruleHits.First(h => h.Rule == blockedBy).TimedOut
+                    ? $"Anfrage blockiert: Die Praxisregel \"{blockedBy.Name}\" konnte nicht rechtzeitig geprüft werden"
+                    : string.IsNullOrWhiteSpace(blockedBy.Message)
                     ? $"Anfrage blockiert: verstößt gegen die Praxisregel \"{blockedBy.Name}\""
                     : blockedBy.Message,
                 new { findings = new[] { new { rule = blockedBy.Name, snippet = "Schutzregel der Praxis" } } });
@@ -147,6 +195,37 @@ public sealed class ChatPipeline(
         // 4. Ziel wählen. Wenn lokal nötig aber nicht da ist, gibt es keinen Ausweg in die Cloud.
         requestedRoute ??= ParseModelPrefix(request["model"]?.GetValue<string>(), out _);
         var decision = routing.Decide(map.MaxSensitivity, hasDocument, requestedRoute);
+
+        // Bleibt die Anfrage ohnehin lokal, muss "Nur Cloud" nicht blockieren
+        var forcedLocal = !user.CloudAllowed ? "Benutzer darf nur lokal"
+            : localOnlyRules.Length > 0 ? "Schutzregel: " + localOnlyRules
+            : slowReplace.Length > 0 ? "Schutzregel zu langsam: " + slowReplace
+            : null;
+        if (decision.Blocked && forcedLocal != null)
+            decision = new RouteDecision(RouteTarget.Local, forcedLocal);
+
+        if (decision.Blocked)
+        {
+            await audit.WriteAsync(new AuditEntry
+            {
+                User = user.Name,
+                Action = action,
+                Sensitivity = map.MaxSensitivity.ToString(),
+                Entities = map.Summary(),
+                InjectionScore = injection.Score,
+                Blocked = true,
+                Reason = "Nur Cloud, aber " + decision.Reason,
+                Prompt = loggedPrompt,
+                DurationMs = watch.ElapsedMilliseconds
+            }, ct);
+
+            return ChatOutcome.Error(403,
+                $"Anfrage blockiert: Sie müsste in der Praxis bleiben ({decision.Reason}), die Weiterleitung steht aber auf Nur Cloud. " +
+                "Ein Admin kann das unter Regeln, Weiterleitung ändern.");
+        }
+
+        if (decision.Route == RouteTarget.Cloud && slowReplace.Length > 0)
+            decision = new RouteDecision(RouteTarget.Local, "Schutzregel zu langsam: " + slowReplace);
 
         if (decision.Route == RouteTarget.Cloud && !user.CloudAllowed)
             decision = new RouteDecision(RouteTarget.Local, "Benutzer darf nur lokal");
@@ -169,10 +248,19 @@ public sealed class ChatPipeline(
         var model = string.IsNullOrWhiteSpace(requestedModel) ? provider.Model : requestedModel;
         var connectionName = providers.GetConnection(decision.Route)?.Name;
 
-        var forward = (JsonObject)request.DeepClone();
-        forward["model"] = model;
-        forward.Remove("stream");
-        forward.Remove("user");
+        // Nur bekannte Felder weitergeben. Alles andere könnte Klartext enthalten, den die Pseudonymisierung nicht sieht.
+        var forward = new JsonObject { ["model"] = model };
+        foreach (var key in NumberFields)
+        {
+            if (request[key] is { } value)
+                forward[key] = value.DeepClone();
+        }
+        if (request["stop"] is JsonArray)
+            forward["stop"] = new JsonArray([.. pseudoStops.Select(s => (JsonNode?)s)]);
+        else if (pseudoStops.Count > 0)
+            forward["stop"] = pseudoStops[0];
+        if (request["response_format"] is JsonObject format)
+            forward["response_format"] = new JsonObject { ["type"] = format["type"]!.GetValue<string>() };
 
         var outMessages = new JsonArray();
 
@@ -185,15 +273,9 @@ public sealed class ChatPipeline(
         if (map.Count > 0)
             outMessages.Add(new JsonObject { ["role"] = "system", ["content"] = PlaceholderHint });
 
+        // Nur Rolle und geschützter Text. Felder wie name oder zwijg_display bleiben hier.
         for (var i = 0; i < messages.Count; i++)
-        {
-            var copy = (JsonObject)messages[i]!.DeepClone();
-            copy["content"] = pseudo[i];
-
-            // Anzeige Karte ist nur für die Oberfläche, Anbieter wie OpenAI lehnen unbekannte Felder ab
-            copy.Remove("zwijg_display");
-            outMessages.Add(copy);
-        }
+            outMessages.Add(new JsonObject { ["role"] = roles[i], ["content"] = pseudo[i] });
         forward["messages"] = outMessages;
 
         // Temperatur der Verbindung, wenn der Client keine eigene schickt
@@ -219,6 +301,7 @@ public sealed class ChatPipeline(
 
         // 7. Echte Werte wieder einsetzen
         var responseLength = 0;
+        var restoreSkipped = false;
         if (response["choices"] is JsonArray choices)
         {
             foreach (var choice in choices)
@@ -227,7 +310,8 @@ public sealed class ChatPipeline(
                     && content.TryGetValue<string>(out var text))
                 {
                     responseLength += text.Length;
-                    var restored = map.Restore(text);
+                    var restored = map.Restore(text, out var skipped);
+                    restoreSkipped |= skipped;
 
                     // Hinweis der Praxis unter jede Antwort, z.B. "KI Antwort, bitte fachlich prüfen."
                     var footer = o.Instructions.ResponseFooter.Trim();
@@ -242,7 +326,13 @@ public sealed class ChatPipeline(
         var warnings = new List<string>();
         if (suspicious) warnings.Add("Warnung Prompt Injection: " + injection.Reasons);
         if (warnRules.Length > 0) warnings.Add("Warnung Schutzregel: " + warnRules);
+        if (slowReplace.Length > 0) warnings.Add("Warnung Schutzregel zu langsam: " + slowReplace);
         if (languageNote != null) warnings.Add("Warnung " + languageNote);
+        if (restoreSkipped)
+        {
+            logger.LogWarning("Platzhalter nicht zurückgesetzt, Link-Erkennung brauchte zu lange");
+            warnings.Add("Warnung Platzhalter: nicht zurückgesetzt, Antwort zu aufwendig zu prüfen");
+        }
 
         await audit.WriteAsync(new AuditEntry
         {
@@ -328,6 +418,46 @@ public sealed class ChatPipeline(
         return null;
     }
 
+    // Prüft die Felder außerhalb der Nachrichten. Gibt eine Fehlermeldung zurück oder null.
+    private static string? CheckFields(JsonObject request)
+    {
+        // Leere Listen wie "tools": [] tragen keinen Text und sind erlaubt
+        if (RejectedFields.FirstOrDefault(f => request[f] is { } v && v is not JsonArray { Count: 0 }) is { } rejected)
+            return Unsupported(rejected);
+
+        if (request["model"] is { } model && !IsString(model))
+            return "model muss Text sein";
+
+        if (NumberFields.FirstOrDefault(f => request[f] is { } v && v.GetValueKind() != JsonValueKind.Number) is { } number)
+            return $"{number} muss eine Zahl sein";
+
+        // seed darf wie bei OpenAI 64 Bit groß sein
+        if (IntegerFields.FirstOrDefault(f => request[f] is JsonValue v && !(f == "seed" ? v.TryGetValue<long>(out _) : v.TryGetValue<int>(out _))) is { } integer)
+            return $"{integer} muss eine ganze Zahl im gültigen Bereich sein";
+
+        if (request["stop"] is { } stop && !IsString(stop) && !(stop is JsonArray list && list.All(s => s != null && IsString(s))))
+            return "stop muss Text oder eine Liste von Texten sein";
+
+        // Nur "text" und "json_object". Ein json_schema enthält freien Text.
+        if (request["response_format"] is { } format
+            && !(format is JsonObject f && f["type"] is { } type && IsString(type) && type.GetValue<string>() is "text" or "json_object"))
+            return Unsupported("response_format");
+
+        return null;
+    }
+
+    private static List<string> ReadStops(JsonNode? stop) => stop switch
+    {
+        JsonArray list => list.Select(s => s!.GetValue<string>()).ToList(),
+        JsonValue v => [v.GetValue<string>()],
+        _ => []
+    };
+
+    private static string Unsupported(string field) =>
+        $"Das Feld \"{field}\" wird nicht unterstützt. Zwijg gibt nur Text weiter, den es vorher schützen kann.";
+
+    private static bool IsString(JsonNode node) => node.GetValueKind() == JsonValueKind.String;
+
     private static string? ReadContent(JsonNode? content)
     {
         if (content == null)
@@ -342,9 +472,11 @@ public sealed class ChatPipeline(
             var texts = new List<string>();
             foreach (var part in parts)
             {
-                if (part?["type"]?.GetValue<string>() != "text")
+                if (part is not JsonObject p || p["type"] is not { } type || !IsString(type) || type.GetValue<string>() != "text")
                     return null;
-                texts.Add(part["text"]?.GetValue<string>() ?? "");
+                if (p["text"] is { } text && !IsString(text))
+                    return null;
+                texts.Add(p["text"]?.GetValue<string>() ?? "");
             }
             return string.Join("\n", texts);
         }

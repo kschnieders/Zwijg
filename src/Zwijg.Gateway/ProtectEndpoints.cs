@@ -83,7 +83,13 @@ public static class ProtectEndpoints
         if (o.Routing.Mode == RoutingMode.LocalOnly)
             return "Laut Regeln verlässt nichts die Praxis (Weiterleitung steht auf Nur lokal).";
 
-        var rules = RuleEngine.Find(text, o.ProtectionRules, a => a is RuleAction.Block or RuleAction.LocalOnly)
+        var hits = RuleEngine.Find(text, o.ProtectionRules, a => a is RuleAction.Block or RuleAction.LocalOnly or RuleAction.Replace);
+
+        // Zu langsame Ersetzen-Regel: Der Wert stünde womöglich im Klartext im geschützten Text
+        if (hits.FirstOrDefault(h => h.TimedOut && h.Rule.Action == RuleAction.Replace) is { } slow)
+            return $"Die Schutzregel \"{slow.Rule.Name}\" konnte nicht rechtzeitig geprüft werden.";
+
+        var rules = hits.Where(h => h.Rule.Action != RuleAction.Replace)
             .Select(h => h.Rule).DistinctBy(r => r.Id).ToList();
         if (rules.FirstOrDefault(r => r.Action == RuleAction.Block) is { } block)
             return $"Die Schutzregel \"{block.Name}\" blockiert diesen Text.";

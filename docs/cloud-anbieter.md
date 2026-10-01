@@ -24,6 +24,7 @@ Der API Schlüssel liegt danach verschlüsselt auf dem Server und wird nie wiede
 Unter **Regeln**, **Weiterleitung**:
 
 - **Automatisch:** Sensible Anfragen gehen an das lokale Modell, der Rest in die Cloud. Das ist die empfohlene Einstellung.
+- **Nur Cloud:** Für Praxen ohne lokales Modell. Die Grenze bei **Was darf höchstens in die Cloud?** und **Hochgeladene Dokumente immer lokal verarbeiten** gelten trotzdem. Was danach lokal bleiben müsste, wird blockiert, mit einem Hinweis an den Benutzer.
 - **Was darf höchstens in die Cloud?** Am vorsichtigsten ist **Nur Anfragen ganz ohne erkannte Personendaten**.
 - **Hochgeladene Dokumente immer lokal verarbeiten** angehakt lassen.
 

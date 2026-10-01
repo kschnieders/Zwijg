@@ -73,7 +73,28 @@ builder.Services.AddSingleton(sp =>
 });
 builder.Services.AddSingleton<InjectionDetector>();
 builder.Services.AddSingleton<IAuditLog>(sp =>
-    new SqliteAuditLog(sp.GetRequiredService<IOptions<GatewayOptions>>().Value.Audit.DatabasePath));
+{
+    // Schlüssel für die Hashkette liegt verschlüsselt in einer eigenen Datei neben dem Protokoll, nie in der Datenbank
+    var path = sp.GetRequiredService<IOptions<GatewayOptions>>().Value.Audit.DatabasePath;
+    var protector = sp.GetRequiredService<IDataProtectionProvider>().CreateProtector("Zwijg.Audit.Key");
+    var keyFile = path + ".key";
+    byte[] key;
+    try
+    {
+        key = AuditKey.LoadOrCreate(keyFile, protector.Protect, protector.Unprotect);
+    }
+    catch (InvalidOperationException ex)
+    {
+        // Schlüsselring verloren, z.B. nach einem Umzug. Zwijg startet trotzdem, aber ältere Einträge
+        // lassen sich nicht mehr prüfen. Das meldet dann "Echtheit prüfen".
+        sp.GetRequiredService<ILoggerFactory>().CreateLogger("Zwijg.Audit")
+            .LogError(ex, "Schlüssel für das Protokoll nicht lesbar, es wird ein neuer angelegt");
+        File.Move(keyFile, keyFile + ".unlesbar-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"), overwrite: true);
+        key = AuditKey.LoadOrCreate(keyFile, protector.Protect, protector.Unprotect);
+    }
+
+    return new SqliteAuditLog(path, key);
+});
 builder.Services.AddSingleton<ChatPipeline>();
 builder.Services.AddSingleton<Zwijg.Gateway.History.ConversationStore>();
 builder.Services.AddHostedService<Zwijg.Gateway.History.ConversationCleanup>();
@@ -82,6 +103,7 @@ var app = builder.Build();
 
 // Einstellungen gleich beim Start laden, damit Fehler sofort auffallen
 app.Services.GetRequiredService<SettingsStore>();
+app.Services.GetRequiredService<IAuditLog>();
 
 // Fehler nie mit Details nach außen geben, die Anfrage könnte Patientendaten enthalten
 app.UseExceptionHandler(error => error.Run(async ctx =>

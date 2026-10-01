@@ -31,6 +31,8 @@ Beispiele:
 - Alles mit "Betäubungsmittel" nur lokal verarbeiten
 - Anfragen mit "Passwort" blockieren
 
+Braucht ein Muster zu lange, gilt die Regel als getroffen: Blockieren blockiert, Nur lokal und Ersetzen halten die Anfrage lokal. Im Protokoll steht dann eine Warnung.
+
 Mit **Ausprobieren** sieht man direkt, was die Regel in einem Beispieltext findet. Unter **Beispiele übernehmen** gibt es fertige Regeln zum Anpassen.
 
 ## Anweisungen an die KI

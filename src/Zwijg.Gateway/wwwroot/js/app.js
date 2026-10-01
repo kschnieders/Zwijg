@@ -804,7 +804,8 @@ async function preview() {
     }
     chips.push(chip(`Sensibilität ${SENSITIVITY[r.sensitivity] ?? r.sensitivity}`, r.sensitivity === "High" ? "amber" : ""));
     const local = r.route === "Local" || !state.me.cloudAllowed;
-    chips.push(chip(local ? "bleibt lokal" : "darf in die Cloud", "ok", local ? "lock" : "cloud"));
+    if (r.blocked) chips.push(chip("wird blockiert: Weiterleitung steht auf Nur Cloud", "warn", "x"));
+    else chips.push(chip(local ? "bleibt lokal" : "darf in die Cloud", "ok", local ? "lock" : "cloud"));
     for (const rule of r.rules || []) {
       const a = { LocalOnly: ["bleibt lokal", "ok", "lock"], Block: ["wird blockiert", "warn", "x"], Warn: ["wird protokolliert", "amber", "list"] }[rule.action];
       if (a) chips.push(chip(`Regel "${rule.name}": ${a[0]}`, a[1], a[2]));
@@ -3250,7 +3251,7 @@ $("auditVerify").addEventListener("click", async () => {
     const v = await api("GET", "/admin/audit/verify");
     $("verifyResult").innerHTML = v.ok
       ? chip(`Alle ${v.checked.toLocaleString("de-DE")} Einträge geprüft, nichts verändert`, "ok", "check")
-      : chip(`Eintrag #${v.brokenAtId} wurde nachträglich verändert oder gelöscht`, "warn", "alert");
+      : chip(v.problem || `Eintrag #${v.brokenAtId} wurde nachträglich verändert oder gelöscht`, "warn", "alert");
   } catch (e) { toast(e.message, true); }
 });
 

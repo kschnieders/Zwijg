@@ -133,4 +133,39 @@ public class AuditAndRoutingTests
 
         Assert.Equal(RouteTarget.Local, policy.Decide(Sensitivity.None, false, RouteTarget.Cloud).Route);
     }
+
+    [Fact]
+    public void CloudOnly_blockiert_was_lokal_bleiben_muss()
+    {
+        var policy = new RoutingPolicy(new RoutingOptions { Mode = RoutingMode.CloudOnly });
+
+        Assert.True(policy.Decide(Sensitivity.High, false).Blocked);
+        Assert.True(policy.Decide(Sensitivity.None, true).Blocked);
+        Assert.Equal(RouteTarget.Local, policy.Decide(Sensitivity.High, false).Route);
+
+        var harmless = policy.Decide(Sensitivity.None, false);
+        Assert.Equal(RouteTarget.Cloud, harmless.Route);
+        Assert.False(harmless.Blocked);
+    }
+
+    [Fact]
+    public void CloudOnly_respektiert_den_Wunsch_nach_lokal()
+    {
+        var policy = new RoutingPolicy(new RoutingOptions { Mode = RoutingMode.CloudOnly });
+
+        var decision = policy.Decide(Sensitivity.High, false, RouteTarget.Local);
+        Assert.Equal(RouteTarget.Local, decision.Route);
+        Assert.False(decision.Blocked);
+        Assert.Equal(RouteTarget.Local, policy.Decide(Sensitivity.None, false, RouteTarget.Local).Route);
+    }
+
+    [Fact]
+    public void Unbekannte_Werte_in_den_Regeln_bleiben_lokal()
+    {
+        var policy = new RoutingPolicy(new RoutingOptions { Mode = (RoutingMode)99, CloudMaxSensitivity = (Sensitivity)99 });
+
+        Assert.Equal(RouteTarget.Local, policy.Decide(Sensitivity.High, false).Route);
+        Assert.Equal(RouteTarget.Local, new RoutingPolicy(new RoutingOptions { CloudMaxSensitivity = (Sensitivity)99 })
+            .Decide(Sensitivity.High, false).Route);
+    }
 }
