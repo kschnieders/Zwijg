@@ -18,6 +18,10 @@ Für alles, was Zwijg nicht von allein erkennt, etwa einen Projektnamen, eine Fi
 
 Der Text ist dann in der ganzen Unterhaltung versteckt, auch in früheren und späteren Nachrichten. Rechts unter **Versteckt in dieser Unterhaltung** steht die Liste, mit × lässt sich ein Eintrag wieder freigeben.
 
+## Diktieren
+
+Mit **Diktieren** neben Senden oder **Strg+M** spricht man statt zu tippen. Der Text landet im Eingabefeld, man prüft ihn und schickt ihn wie gewohnt ab. Einrichten und HTTPS, siehe [Diktieren](diktieren.md).
+
 ## Vorlagen nutzen
 
 Über dem Eingabefeld stehen Vorlagen als Knöpfe, zum Beispiel für Absagen oder Arztbriefe. Manche fragen vorher ein paar Angaben ab, etwa Name und Termin, und schicken die Anweisung dann im Hintergrund. Im Chat steht nur eine kurze Karte.

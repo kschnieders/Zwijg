@@ -46,7 +46,7 @@ const PRESETS = {
   },
 };
 
-const ACTIONS = { chat: "Chat", document: "Dokument", protect: "Text schützen", admin: "Verwaltung", login: "Anmeldung" };
+const ACTIONS = { chat: "Chat", document: "Dokument", protect: "Text schützen", dictation: "Diktat", admin: "Verwaltung", login: "Anmeldung" };
 const SENSITIVITY = { None: "keine", Low: "niedrig", Medium: "mittel", High: "hoch" };
 const MODES = { Auto: "Automatisch", LocalOnly: "Nur lokal", CloudOnly: "Nur Cloud" };
 const LEVELS = { Info: "Info", Warning: "Hinweis", Critical: "Wichtig" };
@@ -648,6 +648,7 @@ function applyMe() {
   $("navDoc").hidden = !me.canUseDocuments;
   // Ein kopierter Text verlässt die Praxis, das gibt es nur für Leute, die in die Cloud dürfen
   $("navProtect").hidden = !me.cloudAllowed;
+  $("dictate").hidden = !me.dictation;
   $("previewCard").hidden = !me.showPreview;
   $("chatLayout").classList.toggle("solo", !me.showPreview);
   $("routeCloud").hidden = !me.cloudAllowed;
@@ -1688,9 +1689,232 @@ $("ocrSave").addEventListener("click", async () => {
   } catch (err) { toast(err.message, true); }
 });
 
+// Diktieren: im Browser aufnehmen, als WAV mit 16 kHz an Zwijg schicken, Text ins Eingabefeld.
+// Der Text geht nicht von selbst raus, damit man Hörfehler vorher sieht.
+const dictation = { ctx: null, stream: null, chunks: [], rate: 48000, started: 0, timer: null, busy: false };
+const MAX_DICTATION_SECONDS = 300;
+
+function dictationRecording() {
+  return dictation.stream !== null;
+}
+
+async function startDictation() {
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    toast("Das Mikrofon geht im Browser nur über HTTPS oder direkt auf diesem Rechner (localhost).", true);
+    return;
+  }
+
+  try {
+    dictation.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  } catch {
+    dictation.stream = null;
+    toast("Kein Zugriff auf das Mikrofon. Bitte im Browser erlauben.", true);
+    return;
+  }
+
+  dictation.ctx = new AudioContext();
+  dictation.rate = dictation.ctx.sampleRate;
+  dictation.chunks = [];
+  await dictation.ctx.audioWorklet.addModule("js/recorder-worklet.js");
+  const source = dictation.ctx.createMediaStreamSource(dictation.stream);
+  const capture = new AudioWorkletNode(dictation.ctx, "zwijg-capture");
+  capture.port.onmessage = e => dictation.chunks.push(e.data);
+
+  // Ohne Verbindung zum Ausgang rechnet der Browser nicht, deshalb stumm anschließen
+  const mute = dictation.ctx.createGain();
+  mute.gain.value = 0;
+  source.connect(capture).connect(mute).connect(dictation.ctx.destination);
+
+  dictation.started = Date.now();
+  dictation.timer = setInterval(updateDictationButton, 250);
+  updateDictationButton();
+}
+
+function releaseMicrophone() {
+  clearInterval(dictation.timer);
+  dictation.stream?.getTracks().forEach(t => t.stop());
+  dictation.ctx?.close();
+  dictation.stream = null;
+  dictation.ctx = null;
+}
+
+function cancelDictation() {
+  releaseMicrophone();
+  dictation.chunks = [];
+  updateDictationButton();
+}
+
+async function stopDictation() {
+  const chunks = dictation.chunks, rate = dictation.rate;
+  releaseMicrophone();
+  dictation.chunks = [];
+  dictation.busy = true;
+  updateDictationButton();
+
+  try {
+    const form = new FormData();
+    form.append("file", new Blob([encodeWav(downsample(chunks, rate))], { type: "audio/wav" }), "diktat.wav");
+    form.append("language", "de");
+    const r = await api("POST", "/v1/audio/transcriptions", form);
+    if (!r.text) {
+      toast("Nichts verstanden. Bitte etwas näher ans Mikrofon.", true);
+      return;
+    }
+    insertAtCursor($("prompt"), r.text);
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    dictation.busy = false;
+    updateDictationButton();
+  }
+}
+
+// Auf 16 kHz Mono bringen, durch Mitteln über die Abtastwerte
+function downsample(chunks, rate) {
+  const length = chunks.reduce((n, c) => n + c.length, 0);
+  const all = new Float32Array(length);
+  let pos = 0;
+  for (const c of chunks) { all.set(c, pos); pos += c.length; }
+
+  const ratio = rate / 16000;
+  const out = new Float32Array(Math.floor(length / ratio));
+  for (let i = 0; i < out.length; i++) {
+    const start = Math.floor(i * ratio), end = Math.min(length, Math.floor((i + 1) * ratio));
+    let sum = 0;
+    for (let j = start; j < end; j++) sum += all[j];
+    out[i] = end > start ? sum / (end - start) : 0;
+  }
+  return out;
+}
+
+function encodeWav(samples) {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const v = new DataView(buffer);
+  const text = (o, s) => [...s].forEach((ch, i) => v.setUint8(o + i, ch.charCodeAt(0)));
+  text(0, "RIFF"); v.setUint32(4, 36 + samples.length * 2, true); text(8, "WAVE");
+  text(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 16000, true); v.setUint32(28, 32000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  text(36, "data"); v.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  return buffer;
+}
+
+function insertAtCursor(field, text) {
+  const before = field.value.slice(0, field.selectionStart);
+  const spaced = (before && !/\s$/.test(before) ? " " : "") + text;
+  field.setRangeText(spaced, field.selectionStart, field.selectionEnd, "end");
+  field.focus();
+  field.dispatchEvent(new Event("input"));
+}
+
+function updateDictationButton() {
+  const b = $("dictate");
+  b.classList.toggle("recording", dictationRecording());
+  b.disabled = dictation.busy;
+  if (dictationRecording()) {
+    const seconds = Math.floor((Date.now() - dictation.started) / 1000);
+    if (seconds >= MAX_DICTATION_SECONDS) { stopDictation(); return; }
+    $("dictateLabel").textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} Stopp`;
+    b.title = "Aufnahme beenden (Strg+M), Esc bricht ab";
+  } else {
+    $("dictateLabel").textContent = dictation.busy ? "wird geschrieben ..." : "Diktieren";
+    b.title = "Diktieren (Strg+M)";
+  }
+}
+
+function toggleDictation() {
+  if (dictation.busy) return;
+  if (dictationRecording()) stopDictation();
+  else startDictation().catch(err => { cancelDictation(); toast(err.message, true); });
+}
+
+$("dictate").addEventListener("click", toggleDictation);
+document.addEventListener("keydown", e => {
+  if ($("dictate").hidden) return;
+  if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === "m") { e.preventDefault(); toggleDictation(); }
+  if (e.key === "Escape" && dictationRecording()) cancelDictation();
+});
+
+// Einstellungen für Admins unter Regeln, Erkennung
+let dictationPoll = null;
+
+async function loadDictation() {
+  const r = await api("GET", "/admin/dictation");
+  const o = r.settings;
+  $("dictEnabled").checked = o.enabled;
+  $("dictDir").value = o.modelDir || "";
+  $("dictDir").placeholder = r.modelDir;
+  $("dictThreads").value = o.threads || "";
+  $("dictModels").innerHTML = r.models.map(m => `
+    <label class="dict-model ${m.id === o.model ? "on" : ""}">
+      <input type="radio" name="dictModel" value="${esc(m.id)}" ${m.id === o.model ? "checked" : ""}>
+      <span><strong>${esc(m.label)}</strong> <span class="muted small">${esc(m.id)}, ${Math.round(m.bytes / 1e6)} MB</span>
+        <small class="muted">${esc(m.note)}</small></span>
+      ${m.present ? `<span class="chip ok">${icon("check")}geladen</span>` : ""}
+    </label>`).join("");
+
+  const d = r.download;
+  const loading = d.running;
+  $("dictProgress").hidden = !loading;
+  if (loading) {
+    const pct = d.total ? Math.round(100 * d.received / d.total) : 0;
+    $("dictProgress").querySelector("i").style.width = pct + "%";
+    $("dictProgressText").textContent = `${esc(d.model)}: ${Math.round(d.received / 1e6)} von ${Math.round(d.total / 1e6)} MB`;
+  }
+  $("dictDownload").disabled = loading;
+
+  $("dictStatus").innerHTML = r.ready
+    ? `<div class="doc-verdict ok">${icon("check")}<div><strong>Bereit</strong><div class="muted small">Im Chat erscheint der Knopf Diktieren.</div></div></div>`
+    : `<div class="doc-verdict warn">${icon("alert")}<div><strong>${o.enabled ? "Sprachmodell fehlt" : "Ausgeschaltet"}</strong>
+        <div class="muted small">${d.error ? esc(d.error) : o.enabled ? "Modell auswählen, laden und speichern. Es wird nur einmal heruntergeladen und läuft danach ohne Internet." : ""}</div></div></div>`;
+
+  clearTimeout(dictationPoll);
+  if (loading) dictationPoll = setTimeout(() => loadDictation().catch(() => {}), 1000);
+  else if (d.model && !d.error) reloadMe();
+}
+
+function selectedDictationModel() {
+  return document.querySelector("input[name=dictModel]:checked")?.value || "small";
+}
+
+async function saveDictation() {
+  await api("PUT", "/admin/dictation", {
+    enabled: $("dictEnabled").checked,
+    model: selectedDictationModel(),
+    modelDir: $("dictDir").value,
+    threads: Number($("dictThreads").value) || 0,
+    language: "de",
+  });
+}
+
+$("dictModels").addEventListener("change", () => {
+  for (const l of $("dictModels").querySelectorAll(".dict-model")) l.classList.toggle("on", l.querySelector("input").checked);
+});
+
+$("dictSave").addEventListener("click", async () => {
+  try {
+    await saveDictation();
+    toast("Diktieren gespeichert");
+    await loadDictation();
+    await reloadMe();
+  } catch (err) { toast(err.message, true); }
+});
+
+$("dictDownload").addEventListener("click", async () => {
+  try {
+    await saveDictation();
+    await api("POST", "/admin/dictation/download", { model: selectedDictationModel() });
+    await loadDictation();
+  } catch (err) { toast(err.message, true); }
+});
+
 async function loadRules() {
   state.settings = await api("GET", "/admin/settings");
   loadOcr().catch(err => toast(err.message, true));
+  loadDictation().catch(err => toast(err.message, true));
   const s = state.settings;
   const p = s.policy;
 

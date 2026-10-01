@@ -169,6 +169,13 @@ public sealed class SettingsStore
         if (s.Users.Any(u => string.IsNullOrWhiteSpace(u.Name)))
             throw new SettingsException("Jeder Benutzer braucht einen Namen");
 
+        if (Zwijg.Core.Speech.WhisperTranscriber.Models.All(m => m.Id != s.Dictation.Model))
+            throw new SettingsException("Unbekanntes Sprachmodell");
+        if (s.Dictation.Threads is < 0 or > 64)
+            throw new SettingsException("Die Zahl der Rechenkerne muss zwischen 0 und 64 liegen");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(s.Dictation.Language ?? "", "^[a-z]{2}$"))
+            throw new SettingsException("Sprache bitte mit zwei Buchstaben angeben, zum Beispiel de");
+
         if (s.Ocr.MaxPages is < 1 or > 200)
             throw new SettingsException("Die Seitenzahl für die Texterkennung muss zwischen 1 und 200 liegen");
         if (!System.Text.RegularExpressions.Regex.IsMatch(s.Ocr.Languages ?? "", @"^[a-z_]{3,20}(\+[a-z_]{3,20}){0,5}$"))

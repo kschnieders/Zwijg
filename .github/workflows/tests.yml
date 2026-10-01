@@ -18,6 +18,18 @@ jobs:
       - name: Tesseract installieren
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-deu
 
+      # Kleinstes Whisper Modell, damit auch die Tests fürs Diktieren laufen
+      - uses: actions/cache@v6
+        with:
+          path: ~/whisper
+          key: whisper-ggml-base
+
+      - name: Whisper Modell laden
+        run: |
+          mkdir -p ~/whisper
+          [ -f ~/whisper/ggml-base.bin ] || curl -fsSL -o ~/whisper/ggml-base.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
+          echo "ZWIJG_TEST_WHISPER_MODEL=$HOME/whisper/ggml-base.bin" >> "$GITHUB_ENV"
+
       - name: Tests ausführen
         run: dotnet test
 

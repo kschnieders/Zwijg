@@ -1114,3 +1114,19 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .protect-layout .card + .card { margin-top: 0; }
 #protectOutput .doc-verdict { margin: 0; }
 #protectOutput .doc-verdict strong { display: block; margin-bottom: 2px; }
+
+/* Diktieren */
+
+.btn.dictate.recording { background: var(--crit-soft); color: var(--crit); border-color: var(--crit-line); font-variant-numeric: tabular-nums; }
+.btn.dictate.recording .ico { animation: dictate-pulse 1s ease-in-out infinite; }
+@keyframes dictate-pulse { 50% { opacity: .35; } }
+.dict-models { display: grid; gap: 8px; margin: 6px 0 4px; }
+.dict-model { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 12px; cursor: pointer; }
+.dict-model.on { border-color: var(--accent); background: var(--accent-soft); }
+.dict-model input { accent-color: var(--accent); }
+.dict-model > span:nth-of-type(1) { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.dict-model .chip { margin-left: auto; }
+.dict-progress { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.dict-progress .meter { flex: 1; height: 8px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); overflow: hidden; }
+.dict-progress .meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.card > .field-label { font-size: 13px; font-weight: 600; color: var(--text-2); }

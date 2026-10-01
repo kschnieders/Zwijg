@@ -260,7 +260,7 @@ public static class AdminSettingsEndpoints
         catch (Exception ex)
         {
             ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Zwijg.Audit")
-                .LogError(ex, "Admin Änderung nicht im Protokoll: {Description}", description);
+                .LogError(ex, "Admin Änderung nicht im Protokoll: {Description}", OneLine(description));
         }
 
         return Results.Ok(new { ok = true });
@@ -443,4 +443,7 @@ public static class AdminSettingsEndpoints
         TaskCanceledException => "Zeitüberschreitung, der Server hat nicht rechtzeitig geantwortet",
         _ => ex.Message
     };
+
+    // Namen kommen aus Eingaben. Ohne Zeilenumbruch kann niemand eine falsche Zeile ins Log schreiben.
+    private static string OneLine(string text) => text.Replace("\r", " ").Replace("\n", " ");
 }

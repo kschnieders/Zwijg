@@ -38,6 +38,9 @@ public sealed class GatewaySettings
 
     // Texterkennung für eingescannte PDFs und Fotos
     public OcrSettings Ocr { get; set; } = new();
+
+    // Diktieren mit Whisper
+    public DictationSettings Dictation { get; set; } = new();
 }
 
 public sealed class Connection
@@ -204,6 +207,22 @@ public sealed class HistoryOptions
 
     // Angepinnte bleiben, bis man sie löst. Deshalb eine eigene Obergrenze.
     public int MaxPinned { get; set; } = 10;
+}
+
+public sealed class DictationSettings
+{
+    public bool Enabled { get; set; } = true;
+
+    // base, small oder large-v3-turbo-q5_0, siehe WhisperTranscriber.Models
+    public string Model { get; set; } = "small";
+
+    // Leer heißt: im Ordner data/models
+    public string? ModelDir { get; set; }
+
+    // 0 heißt: alle Kerne bis auf einen
+    public int Threads { get; set; }
+
+    public string Language { get; set; } = "de";
 }
 
 public sealed class OcrSettings
