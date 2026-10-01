@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.DataProtection.Repositories;
 using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.Extensions.Options;
 using Zwijg.Core.Audit;
+using Zwijg.Core.Ocr;
 using Zwijg.Core.Pseudonymization;
 using Zwijg.Core.Security;
 using Zwijg.Gateway;
@@ -104,6 +105,10 @@ var app = builder.Build();
 // Einstellungen gleich beim Start laden, damit Fehler sofort auffallen
 app.Services.GetRequiredService<SettingsStore>();
 app.Services.GetRequiredService<IAuditLog>();
+
+// Texterkennung meldet nicht löschbare Zwischenbilder ins Log. Liegengebliebene vom letzten Lauf jetzt entfernen.
+TesseractOcr.Log = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Zwijg.Texterkennung");
+await TesseractOcr.DeleteLeftoversAsync(TesseractOcr.Log);
 
 // Fehler nie mit Details nach außen geben, die Anfrage könnte Patientendaten enthalten
 app.UseExceptionHandler(error => error.Run(async ctx =>
