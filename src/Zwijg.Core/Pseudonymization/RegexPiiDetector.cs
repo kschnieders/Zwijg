@@ -13,11 +13,13 @@ public sealed class RegexPiiDetector : IPiiDetector
     private const string IdentifierValue =
         @"(?<v>(?=[A-Za-z]{0,3}[\d\-/ ]*\d[\d\-/ ]*\d[\d\-/ ]*\d[\d\-/ ]*\d)[A-Za-z]{0,3}[\-]?\d+(?:[\-/ ]\d{2,})*[A-Za-z]?)(?![\w])";
 
+    private const string Months = "Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember";
+
     private static readonly (EntityType Type, Regex Pattern)[] Rules =
     [
-        // Geburtsdatum mit Hinweis davor, z.B. "geb. 12.03.1980" oder "Geburtsdatum: 12.03.1980"
+        // Geburtsdatum mit Hinweis davor, z.B. "geb. 12.03.1980", "geb. 12/03/1980", "geb. am 1. März 1980"
         (EntityType.BirthDate, new Regex(
-            @"(?i:\bgeb(?:\.|oren|urtsdatum)?(?:\s+am)?|\*)\s*:?\s*(?<v>\d{1,2}\.\s?\d{1,2}\.\s?(?:\d{4}|\d{2}))(?!\d)", Opts)),
+            @"(?i:\bgeb(?:\.|oren|urtsdatum)?(?:\s+am)?|\*)\s*:?\s*(?<v>\d{1,2}\.\s?\d{1,2}\.\s?(?:\d{4}|\d{2})|\d{1,2}/\d{1,2}/(?:\d{4}|\d{2})|\d{1,2}\.\s?(?:" + Months + @")\s+\d{4})(?!\d)", Opts)),
 
         // Krankenversichertennummer (eGK): ein Buchstabe plus 9 Ziffern
         (EntityType.InsuranceNumber, new Regex(@"\b[A-Z]\d{9}\b", Opts)),
@@ -39,11 +41,13 @@ public sealed class RegexPiiDetector : IPiiDetector
         // Lange Ziffernfolgen ohne Kontext. Ab 7 Ziffern ist das fast nie ein Messwert, aber oft eine Kennung.
         (EntityType.Identifier, new Regex(@"(?<![\d.,])\d{7,}(?![\d.,])", Opts)),
 
-        (EntityType.Iban, new Regex(@"\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}(?:\s?[A-Z0-9]{1,3})?\b", Opts)),
+        // Auch klein geschrieben, z.B. "de89 3704 0044 0532 0130 00"
+        (EntityType.Iban, new Regex(@"(?i:\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}(?:\s?[A-Z0-9]{1,3})?\b)", Opts)),
 
         (EntityType.Email, new Regex(@"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", Opts)),
 
-        (EntityType.Phone, new Regex(@"(?<![\w.,])(?:\+49|0049|0)\s?[1-9][\d\s/()-]{5,}\d\b", Opts)),
+        // Auch mit Ländervorwahl wie "+31 6 1234 5678" oder "+49 (0) 5921 123456"
+        (EntityType.Phone, new Regex(@"(?<![\w.,])(?:(?:\+|00)[1-9]\d{0,2}(?:\s?\(0\))?|0)\s?[1-9][\d\s/()-]{5,}\d\b", Opts)),
 
         // Straße mit Hausnummer, z.B. "Hauptstraße 5a" oder "Lange Str. 12"
         (EntityType.Address, new Regex(
@@ -58,7 +62,7 @@ public sealed class RegexPiiDetector : IPiiDetector
         (EntityType.Date, new Regex(@"\b\d{1,2}\.\s?\d{1,2}\.\s?(?:\d{4}|\d{2})(?!\d)", Opts)),
         (EntityType.Date, new Regex(@"\b\d{4}-\d{2}-\d{2}\b", Opts)),
         (EntityType.Date, new Regex(
-            @"\b\d{1,2}\.\s?(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s+\d{4}\b", Opts)),
+            @"\b\d{1,2}\.\s?(?:" + Months + @")\s+\d{4}\b", Opts)),
     ];
 
     public Task<IReadOnlyList<PiiMatch>> DetectAsync(string text, CancellationToken ct = default)
