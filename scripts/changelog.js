@@ -20,7 +20,8 @@ if (!/^\d+\.\d+\.\d+$/.test(version || "")) {
 
 const file = path.join(__dirname, "..", "CHANGELOG.md");
 const changelog = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
-if (new RegExp(`^## v?${version.replace(/\./g, "\\.")}\\b`, "m").test(changelog)) {
+const exists = changelog.split("\n").some(l => [`## ${version}`, `## v${version}`].some(h => l === h || l.startsWith(h + " ")));
+if (exists) {
   console.error(`Version ${version} steht schon in CHANGELOG.md`);
   process.exit(1);
 }
