@@ -8,19 +8,26 @@ on:
         description: "Version, zum Beispiel 1.0.0"
         required: true
 
-permissions:
-  contents: write
-  packages: write
+# Rechte stehen bei den Jobs. Der Build führt fremden Code aus (NuGet Pakete, Tests)
+# und bekommt deshalb weder Schreibrechte auf das Repository noch Rechte für Herkunftsnachweise.
+permissions: {}
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     env:
       VERSION: ${{ inputs.version }}
+    outputs:
+      image: ${{ steps.image.outputs.name }}
+      digest: ${{ steps.image.outputs.digest }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Version prüfen
         run: |
@@ -44,7 +51,7 @@ jobs:
           fi
           cat notes.md
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: 9.0.x
 
@@ -75,17 +82,60 @@ jobs:
           cp LICENSE NOTICE THIRD-PARTY-NOTICES.md CHANGELOG.md docker-paket/
           (cd docker-paket && zip -qr ../zwijg-$VERSION-docker.zip .)
 
+      # Der Digest geht an den Job release, der den Herkunftsnachweis für das Image anlegt
       - name: Docker Image veröffentlichen
+        id: image
         run: |
           IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
           docker build --build-arg VERSION=$VERSION -t $IMAGE:$VERSION -t $IMAGE:latest .
           docker push $IMAGE:$VERSION
           docker push $IMAGE:latest
+          echo "name=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$VERSION" | cut -d@ -f2)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release
+          path: |
+            zwijg-${{ inputs.version }}-*.zip
+            notes.md
+          if-no-files-found: error
+
+  # Führt nur Actions und gh aus, keinen Code aus dem Build
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release
+
+      # Signierter Nachweis, dass ZIPs und Image aus diesem Workflow stammen. Prüfen mit gh attestation verify, siehe docs/betrieb.md
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: zwijg-${{ inputs.version }}-*.zip
+
+      - name: Bei ghcr.io anmelden
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ needs.build.outputs.image }}
+          subject-digest: ${{ needs.build.outputs.digest }}
+          push-to-registry: true
 
       - name: Release anlegen
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           gh release create "v$VERSION" zwijg-$VERSION-*.zip \
             --title "Zwijg $VERSION" \
