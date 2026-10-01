@@ -11,34 +11,62 @@ public sealed record LoginInput(string Username, string Password, bool Remember)
 
 public sealed record PasswordChangeInput(string? Current, string New);
 
-// Bremst das Durchprobieren von Passwörtern: nach 5 Fehlversuchen kurze Sperre, die mit jedem weiteren wächst
-public sealed class LoginThrottle
+// Bremst das Durchprobieren von Passwörtern: nach 5 Fehlversuchen kurze Sperre, die mit jedem weiteren wächst.
+// Wer nach Ende der Sperre 15 Minuten lang nichts falsch macht, fängt wieder bei null an.
+public sealed class LoginThrottle(TimeProvider? time = null)
 {
     private const int FreeAttempts = 5;
     private static readonly TimeSpan MaxLock = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan ForgetAfter = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan CleanupEvery = TimeSpan.FromMinutes(1);
 
-    private readonly ConcurrentDictionary<string, (int Fails, DateTimeOffset Until)> _state = new();
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+    private readonly ConcurrentDictionary<string, (int Fails, DateTimeOffset Until, DateTimeOffset Last)> _state = new();
+    private long _lastCleanupTicks;
 
     public TimeSpan? LockedFor(string key)
     {
-        if (_state.TryGetValue(key, out var s) && s.Until > DateTimeOffset.UtcNow)
-            return s.Until - DateTimeOffset.UtcNow;
+        var now = _time.GetUtcNow();
+        if (_state.TryGetValue(key, out var s) && s.Until > now)
+            return s.Until - now;
         return null;
     }
 
     public void Failed(string key)
     {
-        _state.AddOrUpdate(key, _ => (1, DateTimeOffset.MinValue), (_, s) =>
+        var now = _time.GetUtcNow();
+        Cleanup(now);
+
+        _state.AddOrUpdate(key, _ => (1, DateTimeOffset.MinValue, now), (_, s) =>
         {
-            var fails = s.Fails + 1;
+            var fails = Expired(s, now) ? 1 : s.Fails + 1;
             if (fails < FreeAttempts)
-                return (fails, DateTimeOffset.MinValue);
+                return (fails, DateTimeOffset.MinValue, now);
             var wait = TimeSpan.FromSeconds(Math.Min(MaxLock.TotalSeconds, 30 * Math.Pow(2, fails - FreeAttempts)));
-            return (fails, DateTimeOffset.UtcNow + wait);
+            return (fails, now + wait, now);
         });
     }
 
     public void Succeeded(string key) => _state.TryRemove(key, out _);
+
+    private static bool Expired((int Fails, DateTimeOffset Until, DateTimeOffset Last) s, DateTimeOffset now) =>
+        s.Until <= now && now - (s.Until > s.Last ? s.Until : s.Last) > ForgetAfter;
+
+    // Sonst wächst die Liste mit jedem ausgedachten Benutzernamen und wird nie kleiner
+    private void Cleanup(DateTimeOffset now)
+    {
+        // Bei parallelen Anfragen räumt nur eine auf
+        var last = Interlocked.Read(ref _lastCleanupTicks);
+        if (now.UtcTicks - last < CleanupEvery.Ticks
+            || Interlocked.CompareExchange(ref _lastCleanupTicks, now.UtcTicks, last) != last)
+            return;
+
+        foreach (var (key, s) in _state)
+        {
+            if (Expired(s, now))
+                _state.TryRemove(new KeyValuePair<string, (int, DateTimeOffset, DateTimeOffset)>(key, s));
+        }
+    }
 }
 
 public static class AuthEndpoints
@@ -48,12 +76,20 @@ public static class AuthEndpoints
 
     private static readonly TimeSpan RememberFor = TimeSpan.FromDays(14);
 
+    // Wie bei der Prüfung der Benutzernamen in den Einstellungen
+    private const int MaxUsernameLength = 40;
+
     public static void MapAuth(this WebApplication app)
     {
         app.MapPost("/auth/login", async (LoginInput input, HttpContext ctx, SettingsStore store, LoginThrottle throttle, IAuditLog audit) =>
         {
-            var username = (input.Username ?? "").Trim().ToLowerInvariant();
-            var shownName = username.Length > 40 ? username[..40] : username;
+            // Benutzernamen haben höchstens 40 Zeichen. Längere gar nicht erst merken oder protokollieren.
+            var username = (input.Username ?? "").Trim();
+            if (username.Length > MaxUsernameLength)
+                return Results.Json(new { error = "Benutzername oder Passwort ist falsch" }, statusCode: 401);
+
+            username = username.ToLowerInvariant();
+            var shownName = username;
             var key = $"{username}|{ctx.Connection.RemoteIpAddress}";
 
             if (throttle.LockedFor(key) is { } wait)

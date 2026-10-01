@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Zwijg.Gateway.Settings;
 using Zwijg.Core.Audit;
 using Zwijg.Core.Pseudonymization;
@@ -101,21 +102,41 @@ public sealed class ChatPipeline(
             texts.Add(text);
         }
 
-        // 2. Auf Injection prüfen, nur was vom Nutzer kommt
-        var injection = extraFindings ?? InjectionResult.Empty;
-        for (var i = 0; i < texts.Count; i++)
-        {
-            if (roles[i] == "user")
-                injection = injection.Combine(injectionDetector.Scan(texts[i]));
-        }
-
-        // 3. Unsichtbare Zeichen raus und pseudonymisieren
-        var map = new PseudonymMap();
-        var cleaned = texts.Select(t => TextSanitizer.Clean(t).Text).ToList();
-
         // stop ist freier Text und läuft deshalb mit durch Pseudonymisierung und Schutzregeln
         var stops = ReadStops(request["stop"]).Select(s => TextSanitizer.Clean(s).Text).ToList();
-        var all = await pseudonymizer.PseudonymizeAsync([.. cleaned, .. stops], map, ct, secrets);
+
+        // Riesige Texte gar nicht erst prüfen. Im Protokoll, damit ein Admin Angriffe auf die Erkennung sieht.
+        if (Pseudonymizer.TooLong([.. texts, .. stops]))
+            return await RefuseAsync(user, action, 413, Pseudonymizer.TooLongMessage, "Text zu lang", watch, ct);
+
+        var injection = extraFindings ?? InjectionResult.Empty;
+        var map = new PseudonymMap();
+        List<string> cleaned;
+        IReadOnlyList<string> all;
+        try
+        {
+            // 2. Auf Injection prüfen, nur was vom Nutzer kommt
+            for (var i = 0; i < texts.Count; i++)
+            {
+                if (roles[i] == "user")
+                    injection = injection.Combine(injectionDetector.Scan(texts[i]));
+            }
+
+            // 3. Unsichtbare Zeichen raus und pseudonymisieren
+            cleaned = texts.Select(t => TextSanitizer.Clean(t).Text).ToList();
+            all = await pseudonymizer.PseudonymizeAsync([.. cleaned, .. stops], map, ct, secrets);
+        }
+        catch (TextTooLongException)
+        {
+            // Das Säubern kann Text verlängern, z.B. Ligaturen wie "ffi"
+            return await RefuseAsync(user, action, 413, Pseudonymizer.TooLongMessage, "Text zu lang", watch, ct);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            // Die Erkennung hat nicht fertig geprüft, also geht nichts raus
+            return await RefuseAsync(user, action, 422, TextTooComplexMessage, "Erkennung abgebrochen: Zeitgrenze", watch, ct);
+        }
+
         var pseudo = all.Take(cleaned.Count).ToList();
         var pseudoStops = all.Skip(cleaned.Count).ToList();
         var loggedPrompt = o.StorePrompts ? LastUserText(roles, pseudo) : null;
@@ -397,6 +418,22 @@ public sealed class ChatPipeline(
     {
         if (response["choices"]?[0]?["message"] is JsonObject msg)
             msg["content"] = text;
+    }
+
+    public const string TextTooComplexMessage = "Der Text ist zu verschachtelt für die Erkennung. Bitte kürzen oder aufteilen.";
+
+    private async Task<ChatOutcome> RefuseAsync(GatewayUser user, string action, int status, string message, string reason,
+        Stopwatch watch, CancellationToken ct)
+    {
+        await audit.WriteAsync(new AuditEntry
+        {
+            User = user.Name,
+            Action = action,
+            Blocked = true,
+            Reason = reason,
+            DurationMs = watch.ElapsedMilliseconds
+        }, ct);
+        return ChatOutcome.Error(status, message);
     }
 
     // Mitternacht in der Zeitzone des Servers, also der Praxis

@@ -25,22 +25,22 @@ public sealed class PlaceDetector : IPiiDetector
         @"(?:\b(?:Wohnort|Ort|Geburtsort|Heimatort)\s*:|\b(?:wohnhaft(?:\s+in)?|wohnt\s+in|lebt\s+in|wohnend\s+in|" +
         @"geboren\s+in|stammt\s+aus|kommt\s+aus|zugezogen\s+aus|umgezogen\s+nach))\s+" +
         $@"(?<place>(?:Bad\s+|Sankt\s+|St\.\s+)?{Word}(?:\s+(?:am|an\s+der|im|in\s+der|ob\s+der)\s+{Word})?)",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     private static readonly Regex WeakContext = new(
         $@"\b(?:in|aus|von|nach|bei|Raum|Region|Umgebung\s+von|Nähe(?:\s+von)?|nahe)\s+(?<place>{Phrase})",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     // "Landkreis Grafschaft Bentheim", "Kreis Steinfurt", "LK Emsland", "Ortsteil Laar"
     private static readonly Regex DistrictContext = new(
         $@"\b(?:Landkreis|Kreis|Lkr\.|LK|Stadtkreis|Regierungsbezirk|Samtgemeinde|Verbandsgemeinde|Gemeinde|Stadt|Amt|" +
         $@"Ortsteil|OT|Stadtteil|Ortschaft|Bauerschaft|Dorf)\s+(?<place>{Phrase})",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     private static readonly Regex PlaceSuffix = new(
         @"(?:burg|berg|dorf|hausen|heim|feld|felde|stadt|stedt|hagen|ingen|rode|furt|bach|brück|brücken|kirchen|" +
         @"hafen|haven|münde|walde|born|horn|hofen|leben|lar|loh|ow|itz|witz|beck|büttel|fleth|siel|kamp)$",
-        Opts);
+        Opts, RegexLimits.MatchTimeout);
 
     // Wörter, die nach einer Präposition eher keine Orte sind, auch wenn ein Dorf so heißt
     private static readonly HashSet<string> NotAPlace = new(StringComparer.OrdinalIgnoreCase)
@@ -59,7 +59,7 @@ public sealed class PlaceDetector : IPiiDetector
 
     private static readonly Lazy<Regex> KnownPlaces = new(() => new Regex(
         @"\b(?:" + string.Join("|", Places.Standalone.OrderByDescending(p => p.Length).Select(Regex.Escape)) + @")\b",
-        Opts));
+        Opts, RegexLimits.MatchTimeout));
 
     public Task<IReadOnlyList<PiiMatch>> DetectAsync(string text, CancellationToken ct = default)
     {

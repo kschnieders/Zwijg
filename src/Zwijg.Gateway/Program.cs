@@ -157,8 +157,17 @@ app.UseExceptionHandler(error => error.Run(async ctx =>
     var badInput = ex is BadHttpRequestException or System.Text.Json.JsonException
         || ex?.InnerException is System.Text.DecoderFallbackException;
 
-    ctx.Response.StatusCode = badInput ? 400 : 500;
-    await ctx.Response.WriteAsJsonAsync(new { error = badInput ? "Ungültige Anfrage (JSON oder UTF-8 fehlerhaft)" : "Interner Fehler" });
+    // Zu langer oder zu verschachtelter Text: die Erkennung bricht ab, und nichts verlässt die Praxis
+    var (status, message) = ex switch
+    {
+        _ when badInput => (400, "Ungültige Anfrage (JSON oder UTF-8 fehlerhaft)"),
+        TextTooLongException => (413, Pseudonymizer.TooLongMessage),
+        System.Text.RegularExpressions.RegexMatchTimeoutException => (422, ChatPipeline.TextTooComplexMessage),
+        _ => (500, "Interner Fehler"),
+    };
+
+    ctx.Response.StatusCode = status;
+    await ctx.Response.WriteAsJsonAsync(new { error = message });
 }));
 
 // Browser merken sich, Zwijg nur noch per HTTPS aufzurufen. Gilt nur für Antworten über HTTPS und nicht für localhost.
