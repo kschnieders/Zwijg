@@ -120,7 +120,40 @@ Gibt es eine neue Version, sehen Admins nach der Anmeldung oben einen Hinweis. S
 - Linux Paket: Zwijg beenden, dann `./update.sh`
 - Docker: `docker compose pull && docker compose up -d`
 
-Die Skripte sichern vorher den Ordner `data` und lassen ihn unangetastet.
+### Was beim Update passiert
+
+Die Skripte für Windows und Linux gehen so vor:
+
+1. Neue Version herunterladen und mit der Prüfsumme von GitHub vergleichen. Stimmt sie nicht, bleibt alles, wie es ist.
+2. Programm und Daten zusammen nach `update-sicherungen` kopieren. Die Sprachmodelle für das Diktieren kommen nicht mit, die ändert ein Update nicht.
+3. Neue Version einspielen und einmal zur Probe starten.
+4. Startet sie nicht, kommt automatisch der alte Stand zurück, Programm und Daten.
+
+Die letzten drei Sicherungen bleiben liegen. Ohne Internet auf dem Server geht das Update auch mit einer vorher heruntergeladenen Datei: `update.ps1 -Paket C:\Downloads\zwijg-1.2.0-win-x64.zip` oder `./update.sh --paket zwijg-1.2.0-linux-x64.zip`.
+
+Zwijg selbst sichert zusätzlich beim ersten Start einer neuen Version seine Daten nach `data/sicherungen`, bevor es Einstellungen und Datenbanken umstellt. Das gilt für jede Installationsart, auch für Docker.
+
+### Zurück zur alten Version
+
+Macht die neue Version später Probleme, Zwijg beenden und:
+
+- Windows: `powershell -ExecutionPolicy Bypass -File update.ps1 -Zurueck`
+- Linux: `./update.sh --zurueck`
+
+Das holt Programm und Daten vom Stand vor dem letzten Update zurück. Eine bestimmte Sicherung geht mit `-Sicherung <Name>` beziehungsweise `--sicherung <Name>`, die Namen stehen im Ordner `update-sicherungen`. Der Stand vor dem Zurückgehen wird ebenfalls gesichert, das lässt sich also auch wieder rückgängig machen.
+
+Wichtig: Daten aus der Zeit nach dem Update, etwa neue Protokolleinträge oder Unterhaltungen, sind danach weg. Die ältere Version kann Daten der neueren nicht lesen.
+
+Docker:
+
+1. In `docker-compose.yml` die alte Version eintragen, zum Beispiel `image: ghcr.io/kschnieders/zwijg:1.1.0` statt `latest`
+2. Die passende Sicherung heraussuchen: `docker compose run --rm --no-deps --entrypoint ls zwijg /app/data/sicherungen`. Sie heißt zum Beispiel `20261005-091500-vor-1.2.0-von-1.1.0`, also Datum, neue und alte Version
+3. Daten zurückholen, `NAME` durch den Ordner aus Schritt 2 ersetzen:
+
+   ```
+   docker compose run --rm --no-deps --entrypoint sh zwijg -c 'cd /app/data && find . -mindepth 1 -maxdepth 1 ! -name sicherungen ! -name models -exec rm -rf {} + && cp -a sicherungen/NAME/. .'
+   ```
+4. `docker compose up -d`
 
 ### Downloads prüfen
 
