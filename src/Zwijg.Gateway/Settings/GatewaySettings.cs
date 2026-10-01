@@ -192,6 +192,24 @@ public sealed class PromptTemplate
     public string Text { get; set; } = "";
     public TemplateMode Mode { get; set; } = TemplateMode.Insert;
     public bool Enabled { get; set; } = true;
+
+    // Die Id landet bei allen Benutzern in der Oberfläche, also nur eigene Ids zulassen.
+    // Fremde oder doppelte Ids bekommen eine neue. Gibt zurück, ob sich etwas geändert hat.
+    public static bool FixIds(List<PromptTemplate> templates)
+    {
+        var changed = false;
+        var ids = new HashSet<string>();
+        foreach (var t in templates)
+        {
+            if (t.Id is not { Length: 10 } || !t.Id.All(char.IsAsciiHexDigitLower) || !ids.Add(t.Id))
+            {
+                t.Id = Connection.NewId();
+                ids.Add(t.Id);
+                changed = true;
+            }
+        }
+        return changed;
+    }
 }
 
 // Gespeicherte Unterhaltungen im Chat. Liegen verschlüsselt und nur für die Person selbst lesbar.

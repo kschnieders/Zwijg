@@ -730,7 +730,7 @@ function renderTemplateBar() {
   const list = state.me.templates || [];
   $("templateBar").hidden = !list.length;
   $("templateBar").innerHTML = list.map(t =>
-    `<button type="button" class="${t.mode === "Run" ? "run" : ""}" data-template="${t.id}" title="${t.mode === "Run" ? "Wird direkt ausgeführt" : "Wird ins Eingabefeld eingefügt"}">${icon(t.mode === "Run" ? "send" : "doc")}${esc(t.title)}</button>`).join("");
+    `<button type="button" class="${t.mode === "Run" ? "run" : ""}" data-template="${esc(t.id)}" title="${t.mode === "Run" ? "Wird direkt ausgeführt" : "Wird ins Eingabefeld eingefügt"}">${icon(t.mode === "Run" ? "send" : "doc")}${esc(t.title)}</button>`).join("");
 }
 
 function renderUsage() {
@@ -765,7 +765,7 @@ function bannerHtml(a, dismiss = true) {
       ${a.title ? `<div class="banner-title">${esc(a.title)}</div>` : ""}
       ${a.message ? `<div class="banner-text">${esc(a.message)}</div>` : ""}
     </div>
-    ${a.dismissible && dismiss ? `<button type="button" class="icon-btn" data-dismiss="${a.id}" title="Ausblenden" aria-label="Ausblenden">${icon("x")}</button>` : ""}
+    ${a.dismissible && dismiss ? `<button type="button" class="icon-btn" data-dismiss="${esc(a.id)}" title="Ausblenden" aria-label="Ausblenden">${icon("x")}</button>` : ""}
   </div>`;
 }
 
@@ -1305,7 +1305,7 @@ async function loadDashboard() {
 
   const eventIcon = { blocked: "alert", error: "plug", admin: "edit" };
   $("dashEvents").innerHTML = s.recent.length
-    ? s.recent.map(e => `<div class="event ${e.kind} clickable" data-audit-id="${e.id}" tabindex="0">${icon(eventIcon[e.kind])}<div class="event-text">
+    ? s.recent.map(e => `<div class="event ${e.kind} clickable" data-audit-id="${esc(e.id)}" tabindex="0">${icon(eventIcon[e.kind])}<div class="event-text">
         <div>${esc(e.reason || ACTIONS[e.action] || e.action)}</div>
         <div class="muted small">${esc(e.user)} · ${relTime(e.timestamp)}</div></div></div>`).join("")
     : '<p class="empty-note">Keine Auffälligkeiten. So soll es sein.</p>';
@@ -1423,7 +1423,7 @@ async function loadConnections() {
   state.settings = await api("GET", "/admin/settings");
   const s = state.settings;
 
-  const option = (c, selected) => `<option value="${c.id}" ${selected ? "selected" : ""}>${esc(c.name)}</option>`;
+  const option = (c, selected) => `<option value="${esc(c.id)}" ${selected ? "selected" : ""}>${esc(c.name)}</option>`;
   $("assignLocal").innerHTML = '<option value="">Keine (sensible Anfragen werden abgelehnt)</option>' +
     s.connections.filter(c => c.onPremise).map(c => option(c, c.id === s.localConnectionId)).join("");
   $("assignCloud").innerHTML = '<option value="">Keine (alles bleibt lokal)</option>' +
@@ -1445,7 +1445,7 @@ async function loadConnections() {
       : c.usesEnvironmentKey ? "aus Umgebungsvariable"
       : c.type === "Anthropic" ? "<span style='color:var(--crit)'>fehlt</span>" : "keiner";
 
-    return `<div class="card conn" data-id="${c.id}">
+    return `<div class="card conn" data-id="${esc(c.id)}">
       <div class="conn-head">
         <span class="conn-logo" style="background:${p.color}">${p.letter}</span>
         <div>
@@ -1459,7 +1459,7 @@ async function loadConnections() {
         <dt>Modell</dt><dd>${esc(c.model || "Standard")}</dd>
         <dt>Schlüssel</dt><dd>${key}</dd>
       </dl>
-      <div class="conn-test" id="test-${c.id}"></div>
+      <div class="conn-test" id="test-${esc(c.id)}"></div>
       <div class="conn-actions">
         <button class="btn small" data-act="test">${icon("check")}Testen</button>
         <button class="btn small ghost" data-act="edit">${icon("edit")}Bearbeiten</button>
@@ -1572,7 +1572,7 @@ function fillConnectionForm(presetId, c) {
   $("cOnPrem").disabled = type === "Anthropic";
 
   $("cKeyHint").textContent = c?.hasApiKey
-    ? `Gespeichert (${c.apiKeyHint || "verborgen"}). Leer lassen, um ihn zu behalten.`
+    ? `Gespeichert (${c.apiKeyHint || "verborgen"}). Leer lassen, um ihn zu behalten. Bei neuer Adresse oder neuem Typ bitte neu eingeben.`
     : p.local ? "Bei lokalen Servern meist nicht nötig." : "";
 }
 
@@ -2593,7 +2593,7 @@ function renderUsers() {
     <tbody>
     ${users.map(u => {
       const st = state.userStats[u.name] || {};
-      return `<tr data-id="${u.id}" class="${u.active ? "" : "locked"}">
+      return `<tr data-id="${esc(u.id)}" class="${u.active ? "" : "locked"}">
         <td><div class="user-cell"><span class="avatar small ${u.active ? "" : "off"}">${esc(initials(u.name))}</span>
           <div><strong>${esc(u.name)}</strong>${u.id === state.me.id ? ' <span class="muted small">(du)</span>' : ""}
           <div class="sub">${esc(u.username)}${u.hasPassword ? "" : " · nur Schlüssel"}${u.keyHint ? "" : " · ohne Schlüssel"}${u.mustChangePassword ? " · Startpasswort" : ""}${u.note ? " · " + esc(u.note) : ""}</div></div></div></td>
@@ -2603,7 +2603,7 @@ function renderUsers() {
         <td class="nowrap">${relTime(st.lastSeen)}</td>
         <td class="num">${st.month || 0}${st.blocked ? ` <span class="badge off" title="blockiert">${st.blocked}</span>` : ""}</td>
         <td>${u.active ? '<span class="badge ok">aktiv</span>' : '<span class="badge off">gesperrt</span>'}</td>
-        <td><button class="icon-btn" data-menu="${u.id}" aria-label="Aktionen">${icon("dots")}</button></td>
+        <td><button class="icon-btn" data-menu="${esc(u.id)}" aria-label="Aktionen">${icon("dots")}</button></td>
       </tr>`;
     }).join("")}
     </tbody></table>`;
@@ -2835,7 +2835,7 @@ async function loadNotices() {
   $("noticeList").innerHTML = list.map(a => {
     const [status, cls] = noticeStatus(a);
     const who = a.audience === "Selected" ? a.userIds.map(userName).join(", ") || "niemand" : AUDIENCES[a.audience];
-    return `<div class="notice ${a.level} ${cls === "ok" ? "" : "inactive"}" data-id="${a.id}">
+    return `<div class="notice ${a.level} ${cls === "ok" ? "" : "inactive"}" data-id="${esc(a.id)}">
       ${icon(a.level === "Info" ? "info" : "alert")}
       <div>
         <div class="notice-title">${esc(a.title || "(ohne Titel)")}</div>
@@ -2897,7 +2897,7 @@ async function openNotice(a, onlyUserId) {
 
   const picked = new Set(a?.userIds ?? (onlyUserId ? [onlyUserId] : []));
   $("nUsers").innerHTML = state.settings.users.map(u =>
-    `<label><input type="checkbox" value="${u.id}" ${picked.has(u.id) ? "checked" : ""}>${esc(u.name)}</label>`).join("");
+    `<label><input type="checkbox" value="${esc(u.id)}" ${picked.has(u.id) ? "checked" : ""}>${esc(u.name)}</label>`).join("");
   $("nError").hidden = true;
   syncNoticeForm();
   $("noticeDialog").showModal();
@@ -3419,12 +3419,12 @@ function renderConversations() {
   const shown = state.convShowAll ? recent : recent.slice(0, RECENT_COUNT);
 
   // Nur Symbole, die etwas bedeuten: Pin bei angepinnten, sonst bleibt die Spalte leer
-  const item = c => `<div class="conv-item ${c.id === state.conversationId ? "active" : ""}" data-conv="${c.id}" tabindex="0"
+  const item = c => `<div class="conv-item ${c.id === state.conversationId ? "active" : ""}" data-conv="${esc(c.id)}" tabindex="0"
       title="${esc(c.title)}, ${relTime(c.updated)}">
       <span class="conv-lead">${c.pinned ? icon("pin") : ""}</span>
       <span class="conv-title">${esc(c.title)}</span>
       <span class="conv-time">${shortTime(c.updated)}</span>
-      <button class="conv-dots" data-conv-menu="${c.id}" aria-label="Aktionen">${icon("dots")}</button>
+      <button class="conv-dots" data-conv-menu="${esc(c.id)}" aria-label="Aktionen">${icon("dots")}</button>
     </div>`;
 
   let html = "";
