@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: "0 5 * * 1"
 
+# Kommt ein neuer Stand in den Pull Request, wird der alte Lauf abgebrochen. Auf main läuft jeder Lauf zu Ende.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
   security-events: write

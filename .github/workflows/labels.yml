@@ -1,25 +1,34 @@
 name: Labels
 
-# Jeder Pull Request braucht ein Label, damit er im Changelog im richtigen Abschnitt landet
+# Jeder Pull Request braucht vor dem Mergen ein Label, damit er im Changelog im richtigen Abschnitt landet.
+# Das Label setzt der Maintainer. Bis dahin steht der Status "Label" auf wartend (gelb), nicht auf Fehler.
+#
+# pull_request_target, damit der Status auch bei Pull Requests aus Forks gesetzt werden darf.
+# Sicher, weil hier kein Code aus dem Pull Request ausgecheckt oder ausgeführt wird, nur seine Labels gelesen.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened, synchronize, labeled, unlabeled]
 
 permissions:
-  contents: read
+  statuses: write
 
 jobs:
-  label:
+  status:
     runs-on: ubuntu-latest
     steps:
-      - name: Label prüfen
+      - name: Status setzen
         env:
+          GH_TOKEN: ${{ github.token }}
           LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
         run: |
+          STATE=pending
+          TEXT="Wartet auf Einordnung durch den Maintainer"
           for l in $LABELS; do
             case "$l" in
-              security|new|improvement|bug|internal) echo "Label: $l"; exit 0 ;;
+              security|new|improvement|bug|internal) STATE=success; TEXT="Eingeordnet als $l" ;;
             esac
           done
-          echo "Bitte ein Label vergeben: security, new, improvement, bug oder internal"
-          exit 1
+          echo "$TEXT"
+          gh api "repos/$REPO/statuses/$SHA" -f state="$STATE" -f context=Label -f description="$TEXT" > /dev/null
