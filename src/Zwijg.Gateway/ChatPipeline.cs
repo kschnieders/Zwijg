@@ -259,6 +259,7 @@ public sealed class ChatPipeline(
 
         // 7. Echte Werte wieder einsetzen
         var responseLength = 0;
+        var restoreSkipped = false;
         if (response["choices"] is JsonArray choices)
         {
             foreach (var choice in choices)
@@ -267,7 +268,8 @@ public sealed class ChatPipeline(
                     && content.TryGetValue<string>(out var text))
                 {
                     responseLength += text.Length;
-                    var restored = map.Restore(text);
+                    var restored = map.Restore(text, out var skipped);
+                    restoreSkipped |= skipped;
 
                     // Hinweis der Praxis unter jede Antwort, z.B. "KI Antwort, bitte fachlich prüfen."
                     var footer = o.Instructions.ResponseFooter.Trim();
@@ -283,6 +285,11 @@ public sealed class ChatPipeline(
         if (suspicious) warnings.Add("Warnung Prompt Injection: " + injection.Reasons);
         if (warnRules.Length > 0) warnings.Add("Warnung Schutzregel: " + warnRules);
         if (languageNote != null) warnings.Add("Warnung " + languageNote);
+        if (restoreSkipped)
+        {
+            logger.LogWarning("Platzhalter nicht zurückgesetzt, Link-Erkennung brauchte zu lange");
+            warnings.Add("Warnung Platzhalter: nicht zurückgesetzt, Antwort zu aufwendig zu prüfen");
+        }
 
         await audit.WriteAsync(new AuditEntry
         {
