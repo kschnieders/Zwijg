@@ -60,7 +60,7 @@ Wichtig unter Windows: Die Schlüssel in `keys` sind zusätzlich an das Windows 
 
 ## Updates
 
-Als Admin steht in der **Übersicht** unter **Status**, ob es eine neue Version gibt. Ein Klick darauf zeigt die passenden Befehle. Kurz gefasst:
+Gibt es eine neue Version, sehen Admins nach der Anmeldung oben einen Hinweis. Schließt sie Sicherheitslücken, ist er rot und heißt **Sicherheitsupdate**. Ein Klick zeigt, was sich seit der installierten Version geändert hat, und die passenden Befehle. Was die installierte Version Neues hat, steht unter **Über Zwijg** und in der Datei `CHANGELOG.md`. Kurz gefasst:
 
 - Windows Paket: im Zwijg Ordner `powershell -ExecutionPolicy Bypass -File update.ps1`
 - Linux Paket: Zwijg beenden, dann `./update.sh`

@@ -38,6 +38,9 @@ public static class Endpoints
             cloud = providers.IsConfigured(RouteTarget.Cloud)
         }));
 
+        // Was ist neu in der installierten Version. Steht ohnehin öffentlich auf GitHub, deshalb ohne Anmeldung.
+        app.MapGet("/changelog", () => Results.Ok(new { version = Version, notes = Changelog.ForInstalledVersion() }));
+
         // OpenAI kompatibel, bestehende Tools müssen nur die Base URL ändern
         app.MapPost("/v1/chat/completions", async (HttpContext ctx, ChatPipeline pipeline, ConversationStore history,
             SettingsStore settings, Pseudonymizer pseudonymizer, CancellationToken ct) =>

@@ -1,0 +1,25 @@
+name: Labels
+
+# Jeder Pull Request braucht ein Label, damit er im Changelog im richtigen Abschnitt landet
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label prüfen
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+        run: |
+          for l in $LABELS; do
+            case "$l" in
+              security|new|improvement|bug|internal) echo "Label: $l"; exit 0 ;;
+            esac
+          done
+          echo "Bitte ein Label vergeben: security, new, improvement, bug oder internal"
+          exit 1

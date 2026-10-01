@@ -29,15 +29,20 @@ public sealed class FakeGitHub : HttpMessageHandler
         return Task.FromResult(Respond());
     }
 
-    public static HttpResponseMessage Release(string tag) => new(HttpStatusCode.OK)
+    public static HttpResponseMessage Release(string tag) => Releases((tag, "Neu: bessere Erkennung", false));
+
+    // Wie die Liste unter /releases, neueste nicht unbedingt zuerst
+    public static HttpResponseMessage Releases(params (string Tag, string Body, bool Draft)[] list) => new(HttpStatusCode.OK)
     {
-        Content = JsonContent.Create(new
+        Content = JsonContent.Create(list.Select(r => new
         {
-            tag_name = tag,
-            html_url = $"https://github.com/kschnieders/zwijg/releases/tag/{tag}",
-            body = "Neu: bessere Erkennung",
+            tag_name = r.Tag,
+            html_url = $"https://github.com/kschnieders/zwijg/releases/tag/{r.Tag}",
+            body = r.Body,
+            draft = r.Draft,
+            prerelease = false,
             published_at = "2026-10-01T10:00:00Z",
-        }),
+        })),
     };
 }
 
@@ -99,6 +104,58 @@ public class UpdateAndCompatTests(UpdateFactory factory) : IClassFixture<UpdateF
         Assert.Equal("99.0.0", v["latest"]!.GetValue<string>());
         Assert.Equal("Neu: bessere Erkennung", v["notes"]!.GetValue<string>());
         Assert.Equal(Endpoints.Version, v["current"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task Alle_verpassten_Versionen_und_Sicherheitsupdates_werden_gemeldet()
+    {
+        factory.GitHub.Respond = () => FakeGitHub.Releases(
+            ("v97.0.0", "### Neu\n\n- Diktieren", false),
+            ("v99.0.0", "### Verbesserungen\n\n- Schneller", false),
+            ("v98.0.0", "### Sicherheit\n\n- Lücke geschlossen", false),
+            ("v100.0.0", "### Sicherheit\n\n- Entwurf", true),
+            ("v0.0.1", "### Sicherheit\n\n- Uralt", false));
+
+        var v = await Version();
+
+        Assert.Equal("99.0.0", v!["latest"]!.GetValue<string>());
+        Assert.True(v["security"]!.GetValue<bool>());
+        var versions = v["releases"]!.AsArray().Select(r => r!["version"]!.GetValue<string>());
+        Assert.Equal(["99.0.0", "98.0.0", "97.0.0"], versions);
+        Assert.True(v["releases"]![1]!["security"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public async Task Ohne_Sicherheitsabschnitt_kein_Sicherheitsupdate()
+    {
+        factory.GitHub.Respond = () => FakeGitHub.Release("v99.0.0");
+
+        var v = await Version();
+
+        Assert.True(v!["updateAvailable"]!.GetValue<bool>());
+        Assert.False(v["security"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public void Abschnitt_einer_Version_aus_dem_Changelog()
+    {
+        const string md = "# Änderungen\n\n## 1.1.0 (2026-10-02)\n\n### Sicherheit\n\n- A\n\n## 1.0.0 (2026-09-29)\n\n### Neu\n\n- B\n";
+
+        Assert.Equal("### Sicherheit\n\n- A", Changelog.Section(md, "1.1.0"));
+        Assert.Equal("### Neu\n\n- B", Changelog.Section(md, "1.0.0"));
+        Assert.Null(Changelog.Section(md, "1.0"));
+        Assert.Null(Changelog.Section(md, "2.0.0"));
+        Assert.True(Changelog.IsSecurity(Changelog.Section(md, "1.1.0")));
+        Assert.False(Changelog.IsSecurity("Mehr Sicherheit beim Anmelden"));
+    }
+
+    [Fact]
+    public async Task Changelog_der_installierten_Version_ohne_Anmeldung()
+    {
+        var res = await factory.CreateClient().GetFromJsonAsync<JsonObject>("/changelog");
+
+        Assert.Equal(Endpoints.Version, res!["version"]!.GetValue<string>());
+        Assert.True(File.Exists(Changelog.FilePath));
     }
 
     [Fact]

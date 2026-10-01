@@ -1130,3 +1130,19 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .dict-progress .meter { flex: 1; height: 8px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); overflow: hidden; }
 .dict-progress .meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
 .card > .field-label { font-size: 13px; font-weight: 600; color: var(--text-2); }
+
+/* Was ist neu: Texte aus CHANGELOG.md */
+
+#updNotes { white-space: normal; max-height: 320px; }
+.upd-release + .upd-release { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.upd-release h4 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 14px; color: var(--text); }
+.notes-md { font-size: 13px; color: var(--text-2); }
+#aboutNew { max-height: 220px; overflow-y: auto; margin-top: 8px; }
+.notes-md h5 { margin: 10px 0 4px; font-size: 13px; color: var(--text); }
+.notes-md h5:first-child { margin-top: 0; }
+.notes-md ul { margin: 0; padding-left: 18px; }
+.notes-md li + li { margin-top: 2px; }
+.notes-md p { margin: 4px 0; }
+.notes-md code { font-size: 12px; background: var(--panel-3); padding: 1px 5px; border-radius: 5px; }
+.notes-md a { color: var(--accent); }
+.banner .link-btn { padding: 0; margin: 0; font-size: inherit; color: inherit; text-decoration: underline; }

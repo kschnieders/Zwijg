@@ -19,6 +19,8 @@ jobs:
       VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Version prüfen
         run: |
@@ -26,6 +28,21 @@ jobs:
             echo "Die Version muss so aussehen: 1.0.0"
             exit 1
           fi
+
+      # Der Text für das Release kommt aus CHANGELOG.md. Ohne Abschnitt für diese Version geht es nicht weiter.
+      - name: Changelog lesen
+        run: |
+          awk -v v="$VERSION" '$0 ~ "^## v?" v "( |$)" { found = 1; next } found && /^## / { exit } found' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "In CHANGELOG.md fehlt der Abschnitt für $VERSION. Bitte zuerst den Workflow Changelog vorbereiten starten."
+            exit 1
+          fi
+          LAST=$(git tag --list 'v*' --sort=-v:refname | head -1)
+          if [ -n "$LAST" ]; then
+            echo >> notes.md
+            echo "[Alle Änderungen seit $LAST](${{ github.server_url }}/${{ github.repository }}/compare/$LAST...v$VERSION)" >> notes.md
+          fi
+          cat notes.md
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -55,7 +72,7 @@ jobs:
           IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}
           mkdir docker-paket
           sed -e "/build: \./d" -e "s#image: .*zwijg:latest#image: $IMAGE:latest#" docker-compose.yml > docker-paket/docker-compose.yml
-          cp LICENSE NOTICE THIRD-PARTY-NOTICES.md docker-paket/
+          cp LICENSE NOTICE THIRD-PARTY-NOTICES.md CHANGELOG.md docker-paket/
           (cd docker-paket && zip -qr ../zwijg-$VERSION-docker.zip .)
 
       - name: Docker Image veröffentlichen
@@ -73,4 +90,4 @@ jobs:
           gh release create "v$VERSION" zwijg-$VERSION-*.zip \
             --title "Zwijg $VERSION" \
             --target "$GITHUB_SHA" \
-            --generate-notes
+            --notes-file notes.md
