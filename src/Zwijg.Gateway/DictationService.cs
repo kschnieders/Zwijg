@@ -184,8 +184,8 @@ public static class DictationEndpoints
             });
         });
 
-        admin.MapPut("/dictation", (DictationInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
-            AdminSettingsEndpoints.Change(ctx, store, audit,
+        admin.MapPut("/dictation", async (DictationInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
+            await AdminSettingsEndpoints.ChangeAsync(ctx, store, audit,
                 input.Enabled ? "Diktieren eingestellt" : "Diktieren ausgeschaltet",
                 s => s.Dictation = new DictationSettings
                 {
