@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using Microsoft.Extensions.Logging;
 using Zwijg.Core.Ocr;
 
@@ -97,6 +98,7 @@ public class OcrTempTests : IDisposable
     }
 
     [UnixFact]
+    [UnsupportedOSPlatform("windows")]
     public void Ordner_fuer_Zwischenbilder_gehoert_nur_dem_eigenen_Benutzer()
     {
         var dir = TesseractOcr.NewTempDir();
