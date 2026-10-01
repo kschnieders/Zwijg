@@ -39,7 +39,7 @@ Für die Aufnahme lieferte ein Demo Modell eine feste Antwort. Erkennung, Platzh
 
 - **Pseudonymisierung**: Namen, Orte, Geburtsdaten, Versichertennummern (in jedem Format, auch bei Tippfehlern im Wort davor), Patienten und Fallnummern, lange Ziffernfolgen, Telefon, E-Mail, IBAN, Adressen
 - **Gesundheitsdaten**: über 1.100 Fachbegriffe auf Deutsch und Latein, typische Endungen wie -itis oder -ektomie, Wirkstoffe, Messwerte und ICD Codes werden erkannt. Sie bleiben im Text stehen, aber Person plus Gesundheit gilt immer als hoch sensibel und bleibt lokal
-- **Schutz vor Prompt Injection**: verdächtige Anweisungen werden blockiert, auch versteckter Text in PDFs (weiße oder winzige Schrift) und unsichtbare Unicode Zeichen
+- **Schutz vor Prompt Injection**: verdächtige Anweisungen werden blockiert, auch versteckter Text in PDFs (weiße oder winzige Schrift, unsichtbarer Render-Modus, Text außerhalb der Seite) und unsichtbare Unicode Zeichen. Die PDF Prüfung ist eine Heuristik und findet nicht jeden Trick, z.B. keinen Text unter einem Bild
 - **Texterkennung**: eingescannte oder gefaxte PDFs und Fotos von Befunden werden lokal mit Tesseract gelesen und danach genauso geschützt
 - **Diktieren**: im Chat sprechen statt tippen, Whisper schreibt lokal mit, die Aufnahme verlässt die Praxis nicht
 - **Protokoll**: wer hat wann was gefragt, nur pseudonymisiert gespeichert, mit Hashkette gegen nachträgliche Änderungen

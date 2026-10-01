@@ -12,8 +12,11 @@ public sealed record PdfInspection(string VisibleText, string HiddenText, int Pa
 }
 
 // Liest den Text aus einem PDF und trennt sichtbaren von verstecktem Text.
-// Versteckt heißt: weiße Schrift, winzige Schrift, unsichtbarer Render-Modus
-// oder Text außerhalb der Seite. Nur der sichtbare Text geht später weiter.
+// Versteckt heißt: weiße Schrift, winzige Schrift, unsichtbarer Render-Modus (3 und 7)
+// oder Text außerhalb der sichtbaren Seite (CropBox). Nur der sichtbare Text geht später weiter.
+// Das ist eine Heuristik. Nicht erkannt werden z.B. Text unter einem Bild, Schrift in der Farbe
+// eines farbigen Hintergrunds, sehr helles Grau oder stark gestauchte Schrift (Tz).
+// Der Text wird danach trotzdem auf Manipulationsversuche geprüft.
 public static class PdfInspector
 {
     private const double MinPointSize = 2.0;
