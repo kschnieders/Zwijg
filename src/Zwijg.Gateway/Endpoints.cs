@@ -264,8 +264,7 @@ public static class Endpoints
 
         // Alles, was die Oberfläche über den angemeldeten Benutzer wissen muss
         app.MapGet("/v1/me", async (HttpContext ctx, SettingsStore settings, IAuditLog audit, DictationService dictation,
-            CancellationToken ct) =>
-        {
+            DailyLimiter limiter, CancellationToken ct) =>        {
             var user = ApiKeyMiddleware.GetUser(ctx);
             var record = settings.Current.Users.FirstOrDefault(u => u.Id == user.Id);
             if (record == null)
@@ -286,7 +285,7 @@ public static class Endpoints
                 canUseDocuments = user.CanUseDocuments,
                 cloudAllowed = user.CloudAllowed,
                 dailyLimit = user.DailyLimit,
-                usedToday = await audit.CountRequestsAsync(user.Name, ChatPipeline.StartOfToday(), ct),
+                usedToday = await audit.CountRequestsAsync(user.Id, user.Name, ChatPipeline.StartOfToday(), ct) + limiter.Running(user.Id),
                 announcements = settings.Current.Announcements
                     .Where(a => a.IsVisibleTo(record, now))
                     .OrderByDescending(a => a.Level).ThenByDescending(a => a.Created)

@@ -45,6 +45,7 @@ public static class ProtectEndpoints
                 await audit.WriteAsync(new AuditEntry
                 {
                     User = user.Name,
+                    UserId = user.Id,
                     Action = "protect",
                     Sensitivity = map.MaxSensitivity.ToString(),
                     Entities = map.Summary(),
@@ -57,6 +58,7 @@ public static class ProtectEndpoints
             await audit.WriteAsync(new AuditEntry
             {
                 User = user.Name,
+                UserId = user.Id,
                 Action = "protect",
                 Route = "External",
                 Sensitivity = map.MaxSensitivity.ToString(),

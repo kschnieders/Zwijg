@@ -6,6 +6,10 @@ public sealed record AuditEntry
     public long Id { get; init; }
     public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
     public required string User { get; init; }
+
+    // Id des Benutzers, damit das Tageslimit eine Umbenennung übersteht.
+    // Bei Einträgen von vor der Spalte leer, dann auch nicht im Hash.
+    public string? UserId { get; init; }
     public required string Action { get; init; }
     public string? Route { get; init; }
     public string? Model { get; init; }
@@ -67,8 +71,9 @@ public interface IAuditLog
     Task<AuditDetail?> GetAsync(long id, CancellationToken ct = default);
     Task<AuditVerifyResult> VerifyAsync(CancellationToken ct = default);
 
-    // Anfragen (Chat und Dokument) eines Benutzers seit einem Zeitpunkt, z.B. für Tageslimits
-    Task<int> CountRequestsAsync(string user, DateTimeOffset since, CancellationToken ct = default);
+    // Anfragen (Chat und Dokument) eines Benutzers seit einem Zeitpunkt, z.B. für Tageslimits.
+    // Zählt nach Id, ältere Einträge ohne Id nach dem Namen.
+    Task<int> CountRequestsAsync(string userId, string userName, DateTimeOffset since, CancellationToken ct = default);
 
     Task<IReadOnlyList<AuditStatRow>> StatRowsAsync(DateTimeOffset since, CancellationToken ct = default);
 }

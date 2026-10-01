@@ -87,4 +87,23 @@ public class TemplateTests(GatewayFactory factory) : IClassFixture<GatewayFactor
         Assert.DoesNotContain("Mustermann", title);
         Assert.Contains("03.10.2026", title);
     }
+
+    [Fact]
+    public async Task Fremde_Vorlagen_Id_wird_durch_eine_eigene_ersetzt()
+    {
+        const string evil = "x\"><a href=\"https://example.com\">Hier klicken</a><b x=\"";
+        (await Client().PutAsJsonAsync("/admin/templates", new[]
+        {
+            new { id = evil, title = "Böse", text = "Hallo", mode = "Insert", enabled = true },
+            new { id = "0123456789", title = "Gut", text = "Hallo", mode = "Insert", enabled = true },
+            new { id = "0123456789", title = "Doppelt", text = "Hallo", mode = "Insert", enabled = true }
+        })).EnsureSuccessStatusCode();
+
+        var templates = (await Client("user-key").GetFromJsonAsync<JsonObject>("/v1/me"))!["templates"]!.AsArray();
+        var ids = templates.Select(t => t!["id"]!.GetValue<string>()).ToList();
+
+        Assert.All(ids, id => Assert.Matches("^[0-9a-f]{10}$", id));
+        Assert.Contains("0123456789", ids);
+        Assert.Equal(3, ids.Distinct().Count());
+    }
 }

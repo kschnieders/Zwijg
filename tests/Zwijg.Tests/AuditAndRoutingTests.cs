@@ -37,6 +37,39 @@ public class AuditAndRoutingTests
         File.Delete(path);
     }
 
+    [Fact]
+    public async Task Anfragen_zaehlen_nach_Id_und_alte_Eintraege_nach_Name()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"zwijg-test-{Guid.NewGuid():N}.db");
+        await new SqliteAuditLog(path).WriteAsync(new AuditEntry { User = "alt", Action = "chat" });
+
+        // Stand vor der Spalte UserId nachstellen
+        await using (var con = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            await con.OpenAsync();
+            await new SqliteCommand("DROP INDEX IX_Audit_UserId_Time; ALTER TABLE Audit DROP COLUMN UserId; PRAGMA user_version = 2", con)
+                .ExecuteNonQueryAsync();
+        }
+
+        var log = new SqliteAuditLog(path);
+        await log.WriteAsync(new AuditEntry { User = "neu", UserId = "u1", Action = "chat" });
+        await log.WriteAsync(new AuditEntry { User = "alt", UserId = "u2", Action = "chat" });
+
+        Assert.Equal(2, await log.CountRequestsAsync("u1", "alt", DateTimeOffset.UtcNow.AddHours(-1)));
+        Assert.Equal(1, await log.CountRequestsAsync("u1", "neu", DateTimeOffset.UtcNow.AddHours(-1)));
+        Assert.True((await log.VerifyAsync()).Ok);
+
+        // Wer die Id umschreibt, um das Limit zu verschieben, fällt auf
+        await using (var con = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            await con.OpenAsync();
+            await new SqliteCommand("UPDATE Audit SET UserId = 'u9' WHERE Id = 2", con).ExecuteNonQueryAsync();
+        }
+        Assert.Equal(2, (await log.VerifyAsync()).BrokenAtId);
+
+        File.Delete(path);
+    }
+
     private static async Task<(SqliteAuditLog Log, string Path)> FilledLog()
     {
         var path = Path.Combine(Path.GetTempPath(), $"zwijg-search-{Guid.NewGuid():N}.db");

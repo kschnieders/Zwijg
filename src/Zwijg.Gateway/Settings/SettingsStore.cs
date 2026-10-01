@@ -55,6 +55,7 @@ public sealed class SettingsStore
     private static readonly Action<GatewaySettings>[] Migrations =
     [
         s => FillUsernames(s), // 0 auf 1: Benutzernamen für die Anmeldung mit Passwort
+        s => PromptTemplate.FixIds(s.Templates), // 1 auf 2: fremde Vorlagen Ids aus älteren Versionen ersetzen
     ];
 
     public static int CurrentSchema => Migrations.Length;
