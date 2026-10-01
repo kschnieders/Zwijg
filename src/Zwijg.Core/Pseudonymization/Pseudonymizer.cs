@@ -6,9 +6,18 @@ namespace Zwijg.Core.Pseudonymization;
 // Text, den jemand im Chat selbst als geheim markiert hat, mit der Bezeichnung für den Platzhalter (z.B. GEHEIM)
 public sealed record SecretTerm(string Value, string Label);
 
+public sealed class TextTooLongException() : Exception(Pseudonymizer.TooLongMessage);
+
 public sealed class Pseudonymizer(IEnumerable<IPiiDetector> detectors, Func<IReadOnlyCollection<string>>? ignoredWords = null)
 {
+    // Höchstens so viele Zeichen pro Anfrage, alle Texte zusammen. Die Erkennung braucht rund 5 Sekunden
+    // pro Million Zeichen, und mehr passt ohnehin in kaum ein Modell. Rund 150 Seiten Arztbrief.
+    public const int MaxTextLength = 500_000;
+    public const string TooLongMessage = "Der Text ist zu lang für die Prüfung, höchstens 500.000 Zeichen";
+
     private readonly IPiiDetector[] _detectors = detectors.ToArray();
+
+    public static bool TooLong(IEnumerable<string> texts) => texts.Sum(t => (long)t.Length) > MaxTextLength;
 
     public static Pseudonymizer CreateDefault() =>
         new([new RegexPiiDetector(), new NameDetector(), new PlaceDetector()]);
@@ -25,6 +34,10 @@ public sealed class Pseudonymizer(IEnumerable<IPiiDetector> detectors, Func<IRea
     public async Task<IReadOnlyList<string>> PseudonymizeAsync(
         IReadOnlyList<string> texts, PseudonymMap map, CancellationToken ct = default, IReadOnlyList<SecretTerm>? secrets = null)
     {
+        // Die Aufrufer prüfen das vorher mit einer eigenen Meldung, das hier ist nur die Absicherung
+        if (TooLong(texts))
+            throw new TextTooLongException();
+
         var ignored = new HashSet<string>(ignoredWords?.Invoke() ?? [], StringComparer.OrdinalIgnoreCase);
         var matchesPerText = new List<List<PiiMatch>>();
         var known = new Dictionary<string, EntityType>(StringComparer.Ordinal);

@@ -119,6 +119,9 @@ public static class Endpoints
             if (doc.Error != null)
                 return Results.Json(new { error = doc.Error, scanned = doc.Scanned, pages = doc.Pages }, statusCode: doc.ErrorStatus);
 
+            if (Pseudonymizer.TooLong([doc.Text]))
+                return Results.Json(new { error = Pseudonymizer.TooLongMessage }, statusCode: 413);
+
             var s = settings.Current;
             var (clean, invisible) = TextSanitizer.Clean(doc.Text);
             var map = new PseudonymMap();
@@ -232,6 +235,9 @@ public static class Endpoints
         app.MapPost("/v1/check", async (CheckRequest req, HttpContext ctx, Pseudonymizer pseudonymizer,
             InjectionDetector detector, SettingsStore settings, CancellationToken ct) =>
         {
+            if (Pseudonymizer.TooLong([req.Text ?? ""]))
+                return Results.Json(new { error = Pseudonymizer.TooLongMessage }, statusCode: 413);
+
             var map = new PseudonymMap();
             var clean = TextSanitizer.Clean(req.Text ?? "").Text;
             var pseudo = await pseudonymizer.PseudonymizeAsync(clean, map, ct, HistoryEndpoints.ReadSecrets(req.Secrets));
