@@ -592,7 +592,7 @@ $("updHowto").addEventListener("click", async e => {
 });
 
 // Text schützen: die Zuordnung Platzhalter zu echtem Wert lebt nur hier im Speicher, nie im Browserspeicher
-const protect = { mapping: [], protectedText: "", restoredText: "" };
+const protect = { mapping: [], protectedText: "", restoredText: "", secrets: [] };
 
 const PLACEHOLDER = /\[\s*([A-Z]+)_(\d+)\s*\]/g;
 
@@ -602,7 +602,7 @@ async function runProtect() {
   $("protectRun").disabled = true;
   $("protectStatus").textContent = "wird geschützt ...";
   try {
-    const r = await api("POST", "/v1/protect", { text, known: protect.mapping });
+    const r = await api("POST", "/v1/protect", { text, known: protect.mapping, secrets: protect.secrets });
     protect.mapping = r.mapping;
     protect.protectedText = r.protected;
     $("protectOutput").innerHTML = esc(r.protected).replace(/\[[A-Z]+_\d+\]/g, m => `<mark>${m}</mark>`);
@@ -658,6 +658,8 @@ function renderProtectMap() {
 
 function resetProtect() {
   protect.mapping = [];
+  protect.secrets = [];
+  renderProtectSecrets();
   protect.protectedText = "";
   protect.restoredText = "";
   $("protectInput").value = "";
@@ -1000,13 +1002,24 @@ function checkBox(checks) {
 const SECRET_KINDS = { GEHEIM: "Geheim", NAME: "Person", FIRMA: "Firma", NUMMER: "Nummer", ORT: "Ort", DATEN: "Sonstiges" };
 let secretLabel = "GEHEIM";
 
+// Der Dialog dient dem Chat und "Text schützen". secretTarget sagt, wohin der neue Eintrag gehört.
+let secretTarget = "chat";
+const SECRET_INFO = {
+  chat: "Diese Stelle wird in der ganzen Unterhaltung durch einen Platzhalter ersetzt, auch in früheren und späteren Nachrichten. Die KI bekommt sie nie zu sehen, in der Antwort steht wieder der echte Text.",
+  protect: "Diese Stelle wird beim Schützen durch einen Platzhalter ersetzt, auch in weiteren Texten bis Neu beginnen. In der Antwort aus dem anderen Programm setzt Zwijg wieder den echten Text ein.",
+};
+
+function secretList() {
+  return secretTarget === "protect" ? protect.secrets : state.secrets;
+}
+
 function selectedPromptText() {
   const p = $("prompt");
   return p.value.slice(p.selectionStart, p.selectionEnd).trim();
 }
 
-function isSecret(text) {
-  return state.secrets.some(s => s.value.toLowerCase() === text.toLowerCase());
+function isSecret(text, list = state.secrets) {
+  return list.some(s => s.value.toLowerCase() === text.toLowerCase());
 }
 
 // Knopf "Verstecken" nur zeigen, wenn im Eingabefeld etwas Sinnvolles markiert ist
@@ -1022,6 +1035,50 @@ for (const ev of ["select", "keyup", "mouseup", "input", "blur"])
 $("hideSelection").addEventListener("mousedown", e => e.preventDefault());
 $("hideSelection").addEventListener("click", () => openSecretDialog(selectedPromptText()));
 
+// Dasselbe für "Text schützen"
+function selectedProtectText() {
+  const p = $("protectInput");
+  return p.value.slice(p.selectionStart, p.selectionEnd).trim();
+}
+
+function updateProtectHide() {
+  const sel = document.activeElement === $("protectInput") ? selectedProtectText() : "";
+  $("protectHide").hidden = !(sel.length >= 2 && sel.length <= 500 && !isSecret(sel, protect.secrets));
+}
+
+for (const ev of ["select", "keyup", "mouseup", "input", "blur"])
+  $("protectInput").addEventListener(ev, () => setTimeout(updateProtectHide, 0));
+
+$("protectHide").addEventListener("mousedown", e => e.preventDefault());
+$("protectHide").addEventListener("click", () => openSecretDialog(selectedProtectText(), "protect"));
+
+$("protectInput").addEventListener("keydown", e => {
+  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "h") {
+    e.preventDefault();
+    const sel = selectedProtectText();
+    if (sel.length >= 2) openSecretDialog(sel, "protect");
+  }
+});
+
+function renderProtectSecrets() {
+  const list = $("protectSecrets");
+  list.hidden = protect.secrets.length === 0;
+  list.innerHTML = protect.secrets.length === 0 ? "" :
+    `<div class="secret-list-title">${icon("lock")}Wird zusätzlich versteckt</div>` +
+    protect.secrets.map((s, i) => `<div class="secret-item">
+        <span class="secret-item-value" title="${esc(s.value)}">${esc(s.value)}</span>
+        <span class="secret-item-kind">${esc(SECRET_KINDS[s.label] || s.label)}</span>
+        <button class="icon-btn" type="button" data-remove-secret="${i}" title="Nicht mehr verstecken" aria-label="Nicht mehr verstecken">${icon("x")}</button>
+      </div>`).join("");
+}
+
+$("protectSecrets").addEventListener("click", e => {
+  const b = e.target.closest("[data-remove-secret]");
+  if (!b) return;
+  protect.secrets.splice(Number(b.dataset.removeSecret), 1);
+  renderProtectSecrets();
+});
+
 $("prompt").addEventListener("keydown", e => {
   if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "h") {
     e.preventDefault();
@@ -1030,8 +1087,10 @@ $("prompt").addEventListener("keydown", e => {
   }
 });
 
-function openSecretDialog(text) {
+function openSecretDialog(text, target = "chat") {
   if (text.length < 2) return;
+  secretTarget = target;
+  $("secretInfo").textContent = SECRET_INFO[target];
   $("secretForm").dataset.value = text;
   $("secretValue").textContent = text;
   setSecretLabel("GEHEIM");
@@ -1042,7 +1101,7 @@ function setSecretLabel(label) {
   secretLabel = label;
   for (const b of $("secretKinds").querySelectorAll("button"))
     b.classList.toggle("active", b.dataset.label === label);
-  const n = state.secrets.filter(s => s.label === label).length + 1;
+  const n = secretList().filter(s => s.label === label).length + 1;
   $("secretExample").textContent = `[${label}_${n}]`;
 }
 
@@ -1054,7 +1113,19 @@ $("secretKinds").addEventListener("click", e => {
 $("secretForm").addEventListener("submit", e => {
   if (e.submitter?.value !== "save") return;
   const value = $("secretForm").dataset.value;
-  if (!isSecret(value)) state.secrets.push({ value, label: secretLabel });
+  const list = secretList();
+  if (!isSecret(value, list)) list.push({ value, label: secretLabel });
+
+  if (secretTarget === "protect") {
+    renderProtectSecrets();
+    toast("Wird beim Schützen versteckt");
+    const p = $("protectInput");
+    p.focus();
+    p.setSelectionRange(p.selectionEnd, p.selectionEnd);
+    updateProtectHide();
+    return;
+  }
+
   renderSecrets();
   preview();
   toast("Wird in dieser Unterhaltung vor der KI versteckt");

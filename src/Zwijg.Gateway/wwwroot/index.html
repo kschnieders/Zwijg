@@ -205,7 +205,14 @@
       <div class="protect-layout">
         <div class="card">
           <div class="card-title"><span class="step">1</span>Text einfügen</div>
-          <textarea id="protectInput" rows="7" placeholder="Zum Beispiel: Bitte formuliere eine freundliche Terminabsage für Herrn Max Mustermann, Termin am Montag um 10 Uhr."></textarea>
+          <div class="prompt-wrap">
+            <textarea id="protectInput" rows="7" placeholder="Zum Beispiel: Bitte formuliere eine freundliche Terminabsage für Herrn Max Mustermann, Termin am Montag um 10 Uhr."></textarea>
+            <button type="button" class="hide-selection" id="protectHide" hidden title="Markierten Text verstecken (Strg+Umschalt+H)">
+              <svg class="ico"><use href="#i-lock"/></svg>Verstecken
+            </button>
+          </div>
+          <p class="muted small protect-hint">Was Zwijg nicht von allein erkennt, etwa eine Firma oder ein Projekt: Text markieren und auf <strong>Verstecken</strong> klicken.</p>
+          <div class="secret-list" id="protectSecrets" hidden></div>
           <div class="protect-bar">
             <button class="btn primary" id="protectRun"><svg class="ico"><use href="#i-lock"/></svg>Schützen</button>
             <span class="muted small" id="protectStatus"></span>
@@ -1111,7 +1118,7 @@
       <h2>Vor der KI verstecken</h2>
       <button class="icon-btn" value="cancel" formnovalidate aria-label="Schließen"><svg class="ico"><use href="#i-x"/></svg></button>
     </header>
-    <p class="muted small">Diese Stelle wird in der ganzen Unterhaltung durch einen Platzhalter ersetzt, auch in früheren und späteren Nachrichten. Die KI bekommt sie nie zu sehen, in der Antwort steht wieder der echte Text.</p>
+    <p class="muted small" id="secretInfo">Diese Stelle wird in der ganzen Unterhaltung durch einen Platzhalter ersetzt, auch in früheren und späteren Nachrichten. Die KI bekommt sie nie zu sehen, in der Antwort steht wieder der echte Text.</p>
     <div class="secret-value" id="secretValue"></div>
     <div class="field-label">Was ist das?</div>
     <div class="secret-kinds" id="secretKinds">

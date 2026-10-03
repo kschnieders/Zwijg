@@ -1156,3 +1156,7 @@ mark.check { background: var(--warn-soft); color: inherit; border-radius: 3px; p
 .check-box span { color: var(--text-2); }
 .check-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .check-list .chip { background: var(--panel); border-color: var(--warn-line); color: var(--text); white-space: normal; }
+
+/* Verstecken bei Text schützen */
+.protect-hint { margin-top: 8px; }
+#protectSecrets { margin-top: 10px; }

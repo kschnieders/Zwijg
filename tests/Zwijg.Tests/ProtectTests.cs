@@ -63,6 +63,24 @@ public class ProtectTests(GatewayFactory factory) : IClassFixture<GatewayFactory
     }
 
     [Fact]
+    public async Task Selbst_versteckte_Stellen_werden_ersetzt_und_lassen_sich_zurueckholen()
+    {
+        var secrets = new[] { new { value = "Projekt Nordlicht", label = "GEHEIM" }, new { value = "Beispiel GmbH", label = "FIRMA" } };
+
+        var (status, first) = await Protect(new { text = "Angebot für Projekt Nordlicht an die Beispiel GmbH schreiben.", secrets });
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        var text = first["protected"]!.GetValue<string>();
+        Assert.Equal("Angebot für [GEHEIM_1] an die [FIRMA_1] schreiben.", text);
+        Assert.Equal("Projekt Nordlicht", Value(first, "[GEHEIM_1]"));
+        Assert.Equal("Beispiel GmbH", Value(first, "[FIRMA_1]"));
+
+        // Auch in der nächsten Runde derselbe Platzhalter, auf Groß und Kleinschreibung kommt es nicht an
+        var (_, second) = await Protect(new { text = "Rückfrage zu projekt nordlicht.", secrets, known = first["mapping"] });
+        Assert.Equal("Rückfrage zu [GEHEIM_1].", second["protected"]!.GetValue<string>());
+    }
+
+    [Fact]
     public async Task Person_mit_Diagnose_darf_standardmaessig_nicht_raus()
     {
         var (status, body) = await Protect(new { text = "Herr Max Mustermann hat Diabetes und braucht eine Überweisung." });
