@@ -45,7 +45,7 @@ Neue Vorlagen legen Admins unter **Regeln**, **Vorlagen** an. Felder wie `{{Pati
 
 Manche Programme lassen sich nicht an Zwijg anbinden, zum Beispiel ChatGPT im Browser oder ein Schreibprogramm mit KI. Dafür gibt es links **Text schützen**:
 
-1. Text einfügen und **Schützen** klicken
+1. Text einfügen und **Schützen** klicken. Was Zwijg nicht von allein erkennt, etwa eine Firma oder ein Projekt, vorher markieren und auf **Verstecken** klicken oder **Strg+Umschalt+H** drücken, genau wie im Chat
 2. Die geschützte Fassung **Kopieren** und im anderen Programm einfügen
 3. Die Antwort von dort kopieren und rechts einfügen
 4. Zwijg setzt die echten Daten wieder ein, zum **Kopieren**
