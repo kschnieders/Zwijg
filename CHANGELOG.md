@@ -6,19 +6,25 @@ Ein neuer Abschnitt entsteht mit dem Workflow **Changelog vorbereiten** aus den 
 
 ## 0.3.0 (2026-10-03)
 
+### Wichtig beim Update
+
+- **Einmal Strg+F5 im Browser:** Ältere Versionen haben dem Browser erlaubt, die Oberfläche zu speichern. Damit sicher die neue erscheint, nach dem Update einmal Strg+F5 drücken. Ab 0.3.0 holt der Browser neue Fassungen von selbst.
+- **Sicherung einrichten:** Nach dem Update sehen Admins den Hinweis **Keine Sicherung eingerichtet**. Unter **Sicherung** einen Zielordner und ein Passwort festlegen, am besten auf einem anderen Laufwerk oder NAS.
+- Die kurze Einführung sehen nur neue Benutzer. Wer schon da ist, startet sie bei Bedarf über das Konto unten links.
+
 ### Neu
 
-- Antwort-Check: erfundene Medikamente, Dosierungen und Laborwerte markieren (#23, @kschnieders)
-- Kurze Einführung beim ersten Anmelden (#25, @kschnieders)
-- Tägliche verschlüsselte Sicherung mit Zurückspielen (#27, @kschnieders)
+- **Antwort-Check:** Zwijg markiert Wirkstoffe, Dosierungen, Einnahmeschemata und Laborwerte, die nur in der Antwort stehen und nicht in der Frage. So fallen erfundene Angaben auf. In anderen Programmen steht der Hinweis als Text unter der Antwort. (#23, @kschnieders)
+- **Tägliche Sicherung:** Einstellungen, Verlauf, Protokoll und Schlüssel werden einmal am Tag verschlüsselt in einen Ordner nach Wahl gesichert, verpasste Sicherungen werden nachgeholt. Zurückspielen mit `Zwijg.Gateway --zurueckspielen <Datei>`. (#27, @kschnieders)
+- **Einführung:** Beim ersten Anmelden zeigt eine kurze Tour die wichtigsten Stellen, überspringen geht immer. (#25, @kschnieders)
 
 ### Verbesserungen
 
-- Text schützen: eigene Stellen verstecken wie im Chat (#24, @kschnieders)
+- **Text schützen:** Eigene Stellen wie eine Firma oder ein Projekt lassen sich wie im Chat markieren und verstecken. (#24, @kschnieders)
 
 ### Fehler behoben
 
-- Sauberer erster Start: klare Meldung bei belegtem Port, Startschlüssel geht nicht verloren (#26, @kschnieders)
+- Ist der Port schon belegt, kommt eine kurze, verständliche Meldung statt einer langen Fehlerausgabe. Der Startschlüssel geht nicht mehr verloren, wenn der erste Start abbricht, und steht gut sichtbar unter den Logzeilen. (#26, @kschnieders)
 
 ## 0.2.0 (2026-10-02)
 
