@@ -310,19 +310,26 @@ public sealed class ConversationCleanup(
         }
 
         using var timer = new PeriodicTimer(TimeSpan.FromHours(1));
-        do
+        try
         {
-            try
+            do
             {
-                var deleted = await store.CleanupAsync(stoppingToken);
-                if (deleted > 0)
-                    logger.LogInformation("{Count} alte Unterhaltungen gelöscht", deleted);
+                try
+                {
+                    var deleted = await store.CleanupAsync(stoppingToken);
+                    if (deleted > 0)
+                        logger.LogInformation("{Count} alte Unterhaltungen gelöscht", deleted);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Aufräumen des Verlaufs fehlgeschlagen");
+                }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogWarning(ex, "Aufräumen des Verlaufs fehlgeschlagen");
-            }
+            while (await timer.WaitForNextTickAsync(stoppingToken));
         }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
+        catch (OperationCanceledException)
+        {
+            // Zwijg wird beendet, das ist kein Fehler
+        }
     }
 }

@@ -16,6 +16,13 @@ using Zwijg.Gateway.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Sicherung zurückspielen statt Zwijg zu starten, siehe docs/betrieb.md
+if (Zwijg.Gateway.Backup.BackupRestore.RequestedFile(args) is { } restoreFile)
+{
+    Environment.ExitCode = Zwijg.Gateway.Backup.BackupRestore.RunFromCommandLine(restoreFile, builder.Configuration);
+    return;
+}
+
 builder.Services.Configure<GatewayOptions>(builder.Configuration.GetSection("Zwijg"));
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddHttpClient();
@@ -40,6 +47,8 @@ builder.Services.AddSingleton<SettingsStore>();
 builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddSingleton<UpdateChecker>();
 builder.Services.AddSingleton<DictationService>();
+builder.Services.AddSingleton<Zwijg.Gateway.Backup.BackupService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Zwijg.Gateway.Backup.BackupService>());
 
 // Anmeldung mit Benutzername und Passwort: verschlüsseltes Cookie, für Skripte unlesbar,
 // nur von der eigenen Seite mitgeschickt. Die Schlüssel dafür liegen bei den anderen Data Protection Schlüsseln.
@@ -210,6 +219,21 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAuthentication();
 app.UseMiddleware<ApiKeyMiddleware>();
 app.MapGatewayEndpoints();
+
+// Belegten Port vorher erkennen. Sonst bricht Kestrel mit einer langen Fehlerausgabe ab.
+// Nur beim echten Server, in den Tests läuft Zwijg ohne Port.
+var realServer = app.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>().GetType().Name.Contains("Kestrel");
+if (realServer && StartupChecks.FindBusyUrl(app.Configuration["urls"]) is { } busy)
+{
+    Console.Error.WriteLine(StartupChecks.BusyMessage(busy));
+    Environment.ExitCode = 1;
+    return;
+}
+
+// Unter den Logzeilen gut sichtbar: Adresse und, solange nötig, der Startschlüssel
+app.Lifetime.ApplicationStarted.Register(() =>
+    Console.WriteLine(StartupChecks.ReadyBanner(app.Urls.FirstOrDefault() ?? StartupChecks.DefaultUrl,
+        app.Services.GetRequiredService<SettingsStore>().StartKeyToShow)));
 
 app.Run();
 

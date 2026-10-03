@@ -272,7 +272,7 @@ public static class Endpoints
 
         // Alles, was die Oberfläche über den angemeldeten Benutzer wissen muss
         app.MapGet("/v1/me", async (HttpContext ctx, SettingsStore settings, IAuditLog audit, DictationService dictation,
-            DailyLimiter limiter, CancellationToken ct) =>        {
+            DailyLimiter limiter, Zwijg.Gateway.Backup.BackupService backup, CancellationToken ct) =>        {
             var user = ApiKeyMiddleware.GetUser(ctx);
             var record = settings.Current.Users.FirstOrDefault(u => u.Id == user.Id);
             if (record == null)
@@ -287,6 +287,8 @@ public static class Endpoints
                 hasPassword = record.PasswordHash != null,
                 mustChangePassword = record.MustChangePassword,
                 tourSeen = record.TourSeen,
+                // Nur Admins: ob die Sicherung läuft, für den Hinweis nach der Anmeldung
+                backup = user.IsAdmin ? new { state = backup.State, backup.Status.LastSuccess, backup.Status.LastError } : null,
                 viaSession = user.ViaSession,
                 admin = user.IsAdmin,
                 showPreview = user.ShowPreview,
@@ -341,6 +343,7 @@ public static class Endpoints
         app.MapProtect();
         app.MapOcr();
         app.MapDictation();
+        Zwijg.Gateway.Backup.BackupEndpoints.MapBackup(app);
         app.MapAdminRules();
         app.MapHistory();
         app.MapAuth();

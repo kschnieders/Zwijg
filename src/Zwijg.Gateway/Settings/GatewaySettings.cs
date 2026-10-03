@@ -41,6 +41,9 @@ public sealed class GatewaySettings
 
     // Diktieren mit Whisper
     public DictationSettings Dictation { get; set; } = new();
+
+    // Tägliche Sicherung des Datenordners
+    public BackupSettings Backup { get; set; } = new();
 }
 
 public sealed class Connection
@@ -113,6 +116,10 @@ public sealed class UserRecord
 
     // Kurze Einführung beim ersten Anmelden gesehen oder übersprungen
     public bool TourSeen { get; set; }
+
+    // Schlüssel stammt aus der Ausgabe beim Start und wurde noch nie benutzt. Dann gibt es bei jedem Start einen neuen,
+    // damit er nicht verloren ist, wenn der erste Start abbricht. Die erste Anmeldung damit beendet das.
+    public bool StartKey { get; set; }
 
     // Anmeldung mit Benutzername und Passwort. Ohne Passwort geht nur der Zugangsschlüssel.
     public string Username { get; set; } = "";
@@ -228,6 +235,27 @@ public sealed class HistoryOptions
 
     // Angepinnte bleiben, bis man sie löst. Deshalb eine eigene Obergrenze.
     public int MaxPinned { get; set; } = 10;
+}
+
+public sealed class BackupSettings
+{
+    // Aus, bis Zielordner und Passwort eingetragen sind
+    public bool Enabled { get; set; }
+
+    // Am besten ein anderes Laufwerk, ein NAS oder eine USB Platte
+    public string? Directory { get; set; }
+
+    // Uhrzeit der täglichen Sicherung, Ortszeit des Servers
+    public string Time { get; set; } = "02:00";
+
+    // Passwort für die Verschlüsselung, mit Data Protection geschützt wie die API Schlüssel
+    public string? PasswordProtected { get; set; }
+
+    public int KeepDays { get; set; } = 7;
+    public int KeepWeeks { get; set; } = 4;
+
+    // Die Praxis sichert den Server anders, zum Beispiel komplett. Dann keine Warnung.
+    public bool External { get; set; }
 }
 
 public sealed class DictationSettings
