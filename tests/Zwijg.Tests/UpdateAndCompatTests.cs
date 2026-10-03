@@ -223,6 +223,13 @@ public class UpdateAndCompatTests(UpdateFactory factory) : IClassFixture<UpdateF
         Assert.Equal("DENY", res.Headers.GetValues("X-Frame-Options").Single());
         Assert.Contains("script-src 'self'", res.Headers.GetValues("Content-Security-Policy").Single());
         Assert.Equal("nosniff", res.Headers.GetValues("X-Content-Type-Options").Single());
+
+        // Nach einem Update soll der Browser die neue Oberfläche holen und nicht die alte aus dem Speicher nehmen
+        foreach (var file in new[] { "/", "/js/app.js", "/css/app.css" })
+        {
+            var r = await factory.CreateClient().GetAsync(file);
+            Assert.True(r.Headers.CacheControl?.NoCache, file);
+        }
     }
 
     // Einstellungen: alte Dateien werden umgestellt und gesichert, neuere werden gelesen und nicht zerstört

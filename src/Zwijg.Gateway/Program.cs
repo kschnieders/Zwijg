@@ -199,7 +199,13 @@ app.UseDefaultFiles();
 var contentTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
 contentTypes.Mappings[".js"] = "text/javascript; charset=utf-8";
 contentTypes.Mappings[".css"] = "text/css; charset=utf-8";
-app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = contentTypes });
+app.UseStaticFiles(new StaticFileOptions
+{
+    ContentTypeProvider = contentTypes,
+    // Browser fragen jedes Mal kurz nach, ob sich die Datei geändert hat. Sonst sieht man nach einem Update
+    // noch tagelang die alte Oberfläche. Ist sie gleich geblieben, kommt nur "unverändert" zurück.
+    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache",
+});
 
 app.UseAuthentication();
 app.UseMiddleware<ApiKeyMiddleware>();
