@@ -23,6 +23,9 @@ public sealed class SettingsStore
     private readonly object _lock = new();
     private GatewaySettings _current;
 
+    // Startschlüssel für die Ausgabe beim Start, null wenn keiner nötig ist. Steht nur im Speicher.
+    public string? StartKeyToShow { get; private set; }
+
     public SettingsStore(IOptions<GatewayOptions> bootstrap, IDataProtectionProvider dataProtection, ILogger<SettingsStore> logger)
     {
         _path = Path.GetFullPath(bootstrap.Value.SettingsPath);
@@ -35,7 +38,9 @@ public sealed class SettingsStore
             // Ältere Einstellungen kennen noch keine Benutzernamen, dann einmal vergeben und speichern
             var changed = Migrate(_current, _path, logger);
             changed |= FillUsernames(_current);
-            if (RemovePublicKeys(_current, logger) | changed)
+            changed |= RemovePublicKeys(_current, logger);
+            changed |= RenewStartKey(_current);
+            if (changed)
                 Save(_current);
         }
         else
@@ -44,6 +49,7 @@ public sealed class SettingsStore
             _current.SchemaVersion = CurrentSchema;
             FillUsernames(_current);
             RemovePublicKeys(_current, logger);
+            RenewStartKey(_current);
             Save(_current);
             logger.LogInformation("Einstellungen neu angelegt unter {Path}", _path);
         }
@@ -102,16 +108,32 @@ public sealed class SettingsStore
 
         // Kommt danach kein Admin mehr rein, bekommt der erste einen neuen Startschlüssel
         if (affected.Count > 0 && !s.Users.Any(u => u.Admin && CanLogIn(u)))
-        {
-            var admin = s.Users.First(u => u.Admin && u.Active);
-            var key = NewUserKey();
-            admin.KeyHash = HashKey(key);
-            admin.KeyHint = Hint(key);
-            Console.WriteLine($"Zwijg: Neuer Startschlüssel für {admin.Name}: {key}");
-        }
+            s.Users.First(u => u.Admin && u.Active).StartKey = true;
 
         return affected.Count > 0;
     }
+
+    // Solange ein Startschlüssel nie benutzt wurde, bei jedem Start einen neuen vergeben und anzeigen.
+    // Der alte gilt dann nicht mehr. So geht er nicht verloren, wenn der erste Start abbricht.
+    private bool RenewStartKey(GatewaySettings s)
+    {
+        var admin = s.Users.FirstOrDefault(u => u.StartKey && u.Active);
+        if (admin == null)
+            return false;
+
+        var key = NewUserKey();
+        admin.KeyHash = HashKey(key);
+        admin.KeyHint = Hint(key);
+        StartKeyToShow = key;
+        return true;
+    }
+
+    // Erste Anmeldung mit dem Startschlüssel: ab jetzt bleibt er, wie er ist
+    public void StartKeyUsed(string userId) => Update(s =>
+    {
+        if (s.Users.FirstOrDefault(u => u.Id == userId) is { StartKey: true } u)
+            u.StartKey = false;
+    });
 
     // Anmelden geht mit Zugangsschlüssel oder Passwort
     public static bool CanLogIn(UserRecord u) => u.Active && (u.KeyHash != "" || u.PasswordHash != null);
@@ -343,13 +365,10 @@ public sealed class SettingsStore
             s.Users.Add(new UserRecord { Name = k.User, KeyHash = HashKey(k.Key), KeyHint = Hint(k.Key), Admin = k.Admin });
         }
 
-        // Ohne Benutzer käme niemand in den Adminbereich. Dann einen Startschlüssel ins Log schreiben.
+        // Ohne Benutzer käme niemand in den Adminbereich. Dann bekommt ein neuer Admin einen Startschlüssel,
+        // den Zwijg beim Start anzeigt, siehe RenewStartKey.
         if (s.Users.Count(u => u.Admin) == 0)
-        {
-            var key = NewUserKey();
-            s.Users.Add(new UserRecord { Name = "admin", KeyHash = HashKey(key), KeyHint = Hint(key), Admin = true });
-            Console.WriteLine($"Zwijg: Kein Admin konfiguriert. Einmaliger Startschlüssel: {key}");
-        }
+            s.Users.Add(new UserRecord { Name = "admin", Admin = true, StartKey = true });
 
         return s;
     }

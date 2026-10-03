@@ -114,6 +114,10 @@ public sealed class UserRecord
     // Kurze Einführung beim ersten Anmelden gesehen oder übersprungen
     public bool TourSeen { get; set; }
 
+    // Schlüssel stammt aus der Ausgabe beim Start und wurde noch nie benutzt. Dann gibt es bei jedem Start einen neuen,
+    // damit er nicht verloren ist, wenn der erste Start abbricht. Die erste Anmeldung damit beendet das.
+    public bool StartKey { get; set; }
+
     // Anmeldung mit Benutzername und Passwort. Ohne Passwort geht nur der Zugangsschlüssel.
     public string Username { get; set; } = "";
     public string? PasswordHash { get; set; }
