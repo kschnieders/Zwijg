@@ -18,6 +18,19 @@ Für alles, was Zwijg nicht von allein erkennt, etwa einen Projektnamen, eine Fi
 
 Der Text ist dann in der ganzen Unterhaltung versteckt, auch in früheren und späteren Nachrichten. Rechts unter **Versteckt in dieser Unterhaltung** steht die Liste, mit × lässt sich ein Eintrag wieder freigeben.
 
+## Antworten prüfen
+
+KI Modelle erfinden manchmal Details, zum Beispiel ein Medikament oder eine Dosierung, die nirgends in der Frage stand. Zwijg markiert solche Stellen in der Antwort gelb:
+
+- Wirkstoffe, etwa Amoxicillin oder Ramipril
+- Dosierungen, etwa 1000 mg oder 2 Tabletten
+- Einnahmeschemata, etwa 1-0-1 oder 3x täglich
+- Laborwerte, etwa CRP 48 mg/l oder RR 140/90
+
+Unter der Antwort steht dann **Bitte prüfen** mit der Liste. Was schon in der Frage, in früheren Nachrichten oder im Dokument stand, wird nicht markiert, auch wenn es anders geschrieben ist (1 g und 1000 mg sind dasselbe).
+
+Das ersetzt keine fachliche Prüfung. Es zeigt nur, wo man vor dem Übernehmen genau hinschauen sollte. Admins können es unter **Regeln**, **Anweisungen** ausschalten.
+
 ## Diktieren
 
 Mit **Diktieren** neben Senden oder **Strg+M** spricht man statt zu tippen. Der Text landet im Eingabefeld, man prüft ihn und schickt ihn wie gewohnt ab. Einrichten und HTTPS, siehe [Diktieren](diktieren.md).

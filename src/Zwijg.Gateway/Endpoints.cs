@@ -68,7 +68,8 @@ public static class Endpoints
             body.Remove("stream_options");
             var user = ApiKeyMiddleware.GetUser(ctx);
 
-            var outcome = await pipeline.RunAsync(user, body, "chat", requestedRoute: ReadRouteHeader(ctx), secrets: secrets, ct: ct);
+            var outcome = await pipeline.RunAsync(user, body, "chat", requestedRoute: ReadRouteHeader(ctx), secrets: secrets,
+                forProgram: !FromWebUi(ctx), ct: ct);
 
             if (outcome.StatusCode == 200 && save && settings.Current.History.Enabled)
             {
@@ -215,7 +216,7 @@ public static class Endpoints
                 request["model"] = model;
 
             var outcome = await pipeline.RunAsync(user, request, "document", hasDocument: true,
-                extraFindings: extra, requestedRoute: ReadRouteHeader(ctx), ct: ct);
+                extraFindings: extra, requestedRoute: ReadRouteHeader(ctx), forProgram: !FromWebUi(ctx), ct: ct);
 
             if (outcome.StatusCode != 200)
                 return ToResult(ctx, outcome);
@@ -227,7 +228,8 @@ public static class Endpoints
                 route = outcome.Route?.Route.ToString(),
                 connection = outcome.Connection,
                 pseudonyms = outcome.Pseudonyms,
-                hiddenTextRemoved = hiddenRemoved
+                hiddenTextRemoved = hiddenRemoved,
+                check = outcome.Checks ?? []
             });
         }).DisableAntiforgery();
 
@@ -518,6 +520,9 @@ public static class Endpoints
         file.ContentType.Contains("pdf", StringComparison.OrdinalIgnoreCase)
         || file.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
 
+    // Die eigene Oberfläche schickt diesen Kopf immer mit. Sie markiert die Stellen selbst, andere Programme bekommen Text.
+    private static bool FromWebUi(HttpContext ctx) => ctx.Request.Headers["X-Requested-With"] == "zwijg";
+
     private static RouteTarget? ReadRouteHeader(HttpContext ctx) =>
         ctx.Request.Headers["X-Zwijg-Route"].ToString().ToLowerInvariant() switch
         {
@@ -559,6 +564,8 @@ public static class Endpoints
         if (outcome.Route != null)
             ctx.Response.Headers["X-Zwijg-Route"] = outcome.Route.Route.ToString();
         ctx.Response.Headers["X-Zwijg-Pseudonyms"] = outcome.Pseudonyms.ToString(CultureInfo.InvariantCulture);
+        if (outcome.Checks is { Count: > 0 } checks)
+            ctx.Response.Headers["X-Zwijg-Check"] = checks.DistinctBy(c => c.Key).Count().ToString(CultureInfo.InvariantCulture);
         if (outcome.Connection != null)
             ctx.Response.Headers["X-Zwijg-Connection"] = Uri.EscapeDataString(outcome.Connection);
     }
