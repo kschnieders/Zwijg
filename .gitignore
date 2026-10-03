@@ -493,6 +493,9 @@ data/
 
 # Die Wortlisten heißen auch Data, gehören aber dazu
 !src/Zwijg.Core/Pseudonymization/Data/
+# Code für die Sicherung, nicht die Backup Ordner aus alten Visual Studio Umstellungen
+!src/Zwijg.Core/Backup/
+!src/Zwijg.Gateway/Backup/
 
 # Rohdaten zum Erzeugen der Ortsliste, siehe scripts/daten/build-orte.js
 DE.txt

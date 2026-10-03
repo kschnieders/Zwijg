@@ -16,6 +16,13 @@ using Zwijg.Gateway.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Sicherung zurückspielen statt Zwijg zu starten, siehe docs/betrieb.md
+if (Zwijg.Gateway.Backup.BackupRestore.RequestedFile(args) is { } restoreFile)
+{
+    Environment.ExitCode = Zwijg.Gateway.Backup.BackupRestore.RunFromCommandLine(restoreFile, builder.Configuration);
+    return;
+}
+
 builder.Services.Configure<GatewayOptions>(builder.Configuration.GetSection("Zwijg"));
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddHttpClient();
@@ -40,6 +47,8 @@ builder.Services.AddSingleton<SettingsStore>();
 builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddSingleton<UpdateChecker>();
 builder.Services.AddSingleton<DictationService>();
+builder.Services.AddSingleton<Zwijg.Gateway.Backup.BackupService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Zwijg.Gateway.Backup.BackupService>());
 
 // Anmeldung mit Benutzername und Passwort: verschlüsseltes Cookie, für Skripte unlesbar,
 // nur von der eigenen Seite mitgeschickt. Die Schlüssel dafür liegen bei den anderen Data Protection Schlüsseln.
