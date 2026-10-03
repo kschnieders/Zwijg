@@ -30,6 +30,12 @@ public sealed class InstructionSettings
 
     // Wird unter jede Antwort gesetzt, z.B. "KI Antwort, bitte fachlich prüfen."
     public string ResponseFooter { get; set; } = "";
+
+    // Wirkstoffe, Dosierungen und Laborwerte markieren, die nur in der Antwort stehen
+    public bool CheckAnswers { get; set; } = true;
+
+    // Andere Programme zeigen keine Markierung, dort steht der Hinweis als Text unter der Antwort
+    public bool CheckNoteForPrograms { get; set; } = true;
 }
 
 public static class InstructionComposer

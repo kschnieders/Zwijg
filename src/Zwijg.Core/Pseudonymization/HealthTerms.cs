@@ -21,7 +21,7 @@ public static class HealthTerms
 
     // Wirkstoffe an der Endung erkennen, z.B. Ramipril, Candesartan, Bisoprolol, Simvastatin, Pantoprazol.
     // Mindestens drei Buchstaben davor, sonst wäre "April" ein Medikament.
-    private static readonly Regex DrugEnding = new(
+    internal static readonly Regex DrugEnding = new(
         @"\b\w{3,}(?:pril|sartan|olol|statin|prazol|cillin|mycin|oxacin|azepam|dipin|gliptin|gliflozin|xaban|parin|" +
         @"tidin|setron|triptan|lukast|afil|umab|izumab|ximab|tinib|semid|thiazid|dronat|ciclovir|conazol|zolam|oxetin|" +
         @"alopram|tralin|iapin|zapin|peridon|tadin|fibrat|glinid|glitazon|cyclin|profen|coxib|terol|sonid|ason|olon)\b",

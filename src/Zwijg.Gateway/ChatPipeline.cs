@@ -6,12 +6,15 @@ using Zwijg.Gateway.Settings;
 using Zwijg.Core.Audit;
 using Zwijg.Core.Pseudonymization;
 using Zwijg.Core.Routing;
+using Zwijg.Core.Safety;
 using Zwijg.Core.Security;
 using Zwijg.Gateway.Providers;
 
 namespace Zwijg.Gateway;
 
-public sealed record ChatOutcome(int StatusCode, JsonObject Body, RouteDecision? Route = null, int Pseudonyms = 0, string? Connection = null)
+// Checks: Angaben aus der Antwort, die nicht in der Frage standen, siehe AnswerCheck
+public sealed record ChatOutcome(int StatusCode, JsonObject Body, RouteDecision? Route = null, int Pseudonyms = 0, string? Connection = null,
+    IReadOnlyList<AnswerFinding>? Checks = null)
 {
     public static ChatOutcome Error(int status, string message, object? details = null)
     {
@@ -58,6 +61,7 @@ public sealed class ChatPipeline(
         InjectionResult? extraFindings = null,
         RouteTarget? requestedRoute = null,
         IReadOnlyList<SecretTerm>? secrets = null,
+        bool forProgram = false,
         CancellationToken ct = default)
     {
         var o = settings.Current;
@@ -329,6 +333,7 @@ public sealed class ChatPipeline(
         // 7. Echte Werte wieder einsetzen
         var responseLength = 0;
         var restoreSkipped = false;
+        IReadOnlyList<AnswerFinding> checks = [];
         if (response["choices"] is JsonArray choices)
         {
             foreach (var choice in choices)
@@ -339,6 +344,15 @@ public sealed class ChatPipeline(
                     responseLength += text.Length;
                     var restored = map.Restore(text, out var skipped);
                     restoreSkipped |= skipped;
+
+                    // Wirkstoffe, Dosierungen und Laborwerte, die nur in der Antwort stehen. Nur für die erste Antwort,
+                    // geprüft gegen alles, was das Modell bekommen hat, also auch frühere Nachrichten und Dokumente.
+                    if (o.Instructions.CheckAnswers && choice == choices[0])
+                    {
+                        checks = CheckAnswer(texts, restored);
+                        if (checks.Count > 0 && forProgram && o.Instructions.CheckNoteForPrograms)
+                            restored = restored.TrimEnd() + "\n\n" + CheckNote(checks);
+                    }
 
                     // Hinweis der Praxis unter jede Antwort, z.B. "KI Antwort, bitte fachlich prüfen."
                     var footer = o.Instructions.ResponseFooter.Trim();
@@ -377,8 +391,30 @@ public sealed class ChatPipeline(
             DurationMs = watch.ElapsedMilliseconds
         }, ct);
 
-        return new ChatOutcome(200, response, decision, map.Count, connectionName);
+        if (checks.Count > 0)
+            response["zwijg_check"] = JsonSerializer.SerializeToNode(checks, JsonSerializerOptions.Web);
+
+        return new ChatOutcome(200, response, decision, map.Count, connectionName, checks);
     }
+
+    // Läuft eine Prüfung zu lange, gibt es eben keinen Hinweis. Die Antwort selbst ist trotzdem in Ordnung.
+    private IReadOnlyList<AnswerFinding> CheckAnswer(IEnumerable<string> question, string answer)
+    {
+        try
+        {
+            return AnswerCheck.Find(question, answer);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            logger.LogWarning("Antwort-Check übersprungen, die Antwort war zu aufwendig zu prüfen");
+            return [];
+        }
+    }
+
+    // Für Programme, die nur den Text zeigen. Jede Angabe nur einmal.
+    public static string CheckNote(IEnumerable<AnswerFinding> checks) =>
+        "Hinweis von Zwijg: Diese Angaben stehen nicht in der Frage, bitte prüfen: " +
+        string.Join(", ", checks.DistinctBy(c => c.Key).Select(c => c.Text));
 
     // Enthält die Antwort fremde Schriftzeichen, die in der Frage nicht vorkamen, einmal strenger nachfragen.
     // Hilft auch das nicht, die fremden Stücke entfernen. Gibt einen Vermerk fürs Protokoll zurück.

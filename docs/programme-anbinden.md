@@ -44,6 +44,7 @@ print(answer.choices[0].message.content)
 
 ## Gut zu wissen
 
+- Stehen in der Antwort Wirkstoffe, Dosierungen oder Laborwerte, die nicht in der Frage vorkamen, hängt Zwijg einen Hinweis an: `Hinweis von Zwijg: Diese Angaben stehen nicht in der Frage, bitte prüfen: ...`. Die Fundstellen stehen zusätzlich im Feld `zwijg_check` der Antwort, die Anzahl im Kopf `X-Zwijg-Check`. Den Hinweis im Text schalten Admins unter **Regeln**, **Anweisungen** ab.
 - Streaming wird unterstützt, die Antwort kommt aber am Stück. Zwijg braucht die ganze Antwort, um die Platzhalter sicher zurückzutauschen.
 - Bilder und Dateien in Nachrichten gehen nicht, nur Text. Dokumente laufen über `/v1/documents/ask`.
 - Werkzeuge (Function Calling) gehen nicht. Anfragen mit `tools`, `functions`, `tool_calls`, `prediction` oder `response_format` mit `json_schema` lehnt Zwijg mit Fehler 400 ab. Diese Felder enthalten freien Text, den Zwijg nicht schützen kann. In Open WebUI deshalb keine Tools für Zwijg einschalten.

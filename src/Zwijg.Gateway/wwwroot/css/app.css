@@ -1146,3 +1146,13 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .notes-md code { font-size: 12px; background: var(--panel-3); padding: 1px 5px; border-radius: 5px; }
 .notes-md a { color: var(--accent); }
 .banner .link-btn { padding: 0; margin: 0; font-size: inherit; color: inherit; text-decoration: underline; }
+
+/* Antwort-Check: Angaben, die nur in der Antwort stehen */
+
+mark.check { background: var(--warn-soft); color: inherit; border-radius: 3px; padding: 0 2px; box-shadow: inset 0 -2px 0 var(--warn); cursor: help; }
+.check-box { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--warn-soft); border: 1px solid var(--warn-line); white-space: normal; font-size: 13.5px; line-height: 1.5; }
+.check-box > .ico { color: var(--warn); flex: none; margin-top: 2px; }
+.check-box strong { display: block; }
+.check-box span { color: var(--text-2); }
+.check-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.check-list .chip { background: var(--panel); border-color: var(--warn-line); color: var(--text); white-space: normal; }

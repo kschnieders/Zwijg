@@ -948,7 +948,7 @@ async function preview() {
   }
 }
 
-function addMessage(role, text, meta) {
+function addMessage(role, text, meta, checks) {
   const chat = $("chat");
   chat.querySelector(".chat-empty")?.remove();
   const div = document.createElement("div");
@@ -957,6 +957,10 @@ function addMessage(role, text, meta) {
   if (role === "user") {
     div.dataset.text = text;
     markSecrets(div);
+  }
+  if (checks?.length) {
+    div.innerHTML = markChecks(text, checks);
+    div.insertAdjacentHTML("beforeend", checkBox(checks));
   }
   if (meta) {
     const m = document.createElement("div");
@@ -967,6 +971,28 @@ function addMessage(role, text, meta) {
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
   return div;
+}
+
+// Antwort-Check: Wirkstoffe, Dosierungen und Laborwerte, die nur in der Antwort stehen, gelb markieren.
+// Der Server liefert die Stellen. Erst am Rohtext trennen, dann jedes Stück escapen.
+const CHECK_KINDS = { Wirkstoff: "Wirkstoff", Dosierung: "Dosierung", Einnahme: "Einnahme", Laborwert: "Laborwert" };
+
+function markChecks(text, checks) {
+  let html = "", pos = 0;
+  for (const c of [...checks].sort((a, b) => a.start - b.start)) {
+    if (c.start < pos || c.start + c.length > text.length) continue;
+    html += esc(text.slice(pos, c.start))
+      + `<mark class="check" title="${esc(CHECK_KINDS[c.kind] || c.kind)}, steht nicht in der Frage">${esc(text.slice(c.start, c.start + c.length))}</mark>`;
+    pos = c.start + c.length;
+  }
+  return html + esc(text.slice(pos));
+}
+
+function checkBox(checks) {
+  const unique = [...new Map(checks.map(c => [c.key, c])).values()];
+  return `<div class="check-box">${icon("alert")}<div><strong>Bitte prüfen</strong>
+    <span>Diese Angaben stehen nicht in deiner Frage. Die KI kann sie erfunden haben.</span>
+    <div class="check-list">${unique.map(c => `<span class="chip warn">${esc(CHECK_KINDS[c.kind] || c.kind)}: ${esc(c.text)}</span>`).join("")}</div></div></div>`;
 }
 
 // Selbst markierte Geheimnisse: gelten für die ganze Unterhaltung, gehen nie an die KI.
@@ -1143,7 +1169,8 @@ async function sendContent(text, display) {
     addMessage("assistant", answer,
       chip(route === "Local" ? "lokal" : "Cloud", "ok", route === "Local" ? "lock" : "cloud") +
       chip(conn || data.model || "") +
-      (count > 0 ? chip(`${count} Werte geschützt`, "", "shield") : ""));
+      (count > 0 ? chip(`${count} Werte geschützt`, "", "shield") : ""),
+      data.zwijg_check);
     return true;
   } catch (e) {
     typing.remove();
@@ -1331,7 +1358,7 @@ async function askDocument() {
       chip(`${j.pseudonyms} Werte geschützt`, "", "shield")
     ];
     $("docResult").innerHTML = `<div class="doc-question">${icon("chat")}${esc($("docQuestion").value)}</div>`
-      + `<div class="msg assistant">${esc(j.answer)}</div><div class="chips">${chips.join("")}</div>`;
+      + `<div class="msg assistant">${j.check?.length ? markChecks(j.answer, j.check) + checkBox(j.check) : esc(j.answer)}</div><div class="chips">${chips.join("")}</div>`;
   } catch (e) {
     const findings = (e.data?.details?.findings || []).map(f => chip(`${f.rule}: ${f.snippet}`, "warn")).join("");
     $("docResult").innerHTML = `<div class="msg error">${esc(e.message)}</div><div class="chips">${findings}</div>`;
@@ -2084,6 +2111,9 @@ async function loadRules() {
   $("iFormat").value = i.format;
   $("iCustom").value = i.customText || "";
   $("iFooter").value = i.responseFooter || "";
+  $("iCheck").checked = i.checkAnswers !== false;
+  $("iCheckNote").checked = i.checkNoteForPrograms !== false;
+  $("iCheckNote").disabled = !$("iCheck").checked;
   syncInstructions(true);
 
   renderRules();
@@ -2132,6 +2162,8 @@ function instructionInput() {
     format: $("iFormat").value,
     customText: $("iCustom").value,
     responseFooter: $("iFooter").value.trim(),
+    checkAnswers: $("iCheck").checked,
+    checkNoteForPrograms: $("iCheckNote").checked,
   };
 }
 
@@ -2154,6 +2186,8 @@ function syncInstructions(immediate = false) {
     } catch { /* Vorschau ist nicht wichtig genug für eine Fehlermeldung */ }
   }, immediate ? 0 : 250);
 }
+
+$("iCheck").addEventListener("change", () => $("iCheckNote").disabled = !$("iCheck").checked);
 
 ["iEnabled", "iLanguage", "iAddressing", "iAudience", "iTone", "iLength", "iFormat", "iCustom", "iFooter"].forEach(id => {
   $(id).addEventListener("input", () => syncInstructions());
