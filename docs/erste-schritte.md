@@ -18,6 +18,8 @@ Den Schlüssel kopieren. Er wird nur dieses eine Mal angezeigt.
 2. Auf **Stattdessen mit Zugangsschlüssel anmelden** klicken
 3. Den Startschlüssel einfügen und **Anmelden**
 
+Beim ersten Anmelden zeigt eine kurze Einführung die wichtigsten Stellen. Mit **Überspringen** oder Esc geht es direkt los. Wieder ansehen geht unten links über das Konto, **Einführung ansehen**. Jeder neue Benutzer sieht sie einmal.
+
 ## Eigenes Passwort festlegen
 
 1. Unten links auf den eigenen Namen klicken

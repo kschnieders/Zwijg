@@ -221,6 +221,12 @@ async function enterApp(me) {
   preview();
 
   if (me.mustChangePassword) openPasswordDialog(true);
+
+  // Beim ersten Mal die Einführung, nach einem Pflicht-Passwortwechsel erst danach
+  if (!me.tourSeen) {
+    if ($("passwordDialog").open) $("passwordDialog").addEventListener("close", () => setTimeout(startTour, 300), { once: true });
+    else setTimeout(startTour, 300);
+  }
 }
 
 const UNREACHABLE = "Zwijg ist nicht erreichbar. Bitte später noch einmal versuchen.";
@@ -368,6 +374,7 @@ $("whoBox").addEventListener("click", e => {
   e.stopPropagation();
   openMenu($("whoBox"), [
     { icon: "key", label: state.me?.hasPassword ? "Passwort ändern" : "Passwort festlegen", run: () => openPasswordDialog(false) },
+    { icon: "tour", label: "Einführung ansehen", run: startTour },
     { icon: "info", label: "Über Zwijg", run: openAbout },
     "-",
     { icon: "sun", label: "Hell", active: themeChoice() === "light", run: () => setTheme("light") },
@@ -686,6 +693,140 @@ $("restoreInput").addEventListener("input", restoreAnswer);
 $("protectCopy").addEventListener("click", () => copyText(protect.protectedText, "Geschützte Fassung kopiert"));
 $("restoreCopy").addEventListener("click", () => copyText(protect.restoredText, "Antwort kopiert"));
 $("protectReset").addEventListener("click", resetProtect);
+
+// Kurze Einführung beim ersten Anmelden. Hebt nacheinander einzelne Stellen hervor, überspringen geht immer.
+// Gezeigt wird nur, was die Person auch benutzen darf.
+const tour = { steps: [], i: 0 };
+
+function tourSteps() {
+  const me = state.me;
+  return [
+    { view: "chat", title: "Willkommen bei Zwijg",
+      text: "Zwijg schützt Patientendaten, bevor eine Frage an eine KI geht. In einer Minute zeigen wir dir die wichtigsten Stellen." },
+    { el: "#prompt", view: "chat", title: "Ganz normal schreiben",
+      text: "Hier stellst du Fragen wie in jedem Chat, auch mit Namen, Geburtsdaten oder Versichertennummern. Zwijg ersetzt sie vor dem Versand und setzt sie in der Antwort wieder ein." },
+    me.showPreview && { el: "#previewCard", view: "chat", title: "Das sieht die KI",
+      text: "Hier steht beim Tippen genau der Text, der rausgeht. Ersetzte Stellen sind gelb. Erkennt Zwijg etwas nicht, im Eingabefeld markieren und auf Verstecken klicken." },
+    me.dictation && { el: "#dictate", view: "chat", title: "Diktieren",
+      text: "Sprechen statt tippen, mit Strg+M. Die Spracherkennung läuft auf diesem Rechner." },
+    me.canUseDocuments && { el: "#navDoc", title: "Dokumente",
+      text: "PDFs, Scans und Fotos von Befunden hochladen. Zwijg prüft sie und du kannst Fragen dazu stellen." },
+    me.cloudAllowed && { el: "#navProtect", title: "Text schützen",
+      text: "Für Programme, die nicht an Zwijg angebunden sind: Text hier schützen, dort einfügen und die Antwort hier mit den echten Daten zurückholen." },
+    { el: "#convSection", title: "Verlauf",
+      text: "Unterhaltungen werden verschlüsselt gespeichert. So kannst du später weitermachen." },
+    me.admin && { el: ".nav .admin-only", title: "Verwaltung",
+      text: "Als Admin richtest du hier die KI Modelle, Regeln und Benutzer ein. Im Protokoll steht, wer wann was gefragt hat, ohne Klartext." },
+    { el: "#whoBox", title: "Dein Konto",
+      text: "Hier änderst du dein Passwort, wählst hell oder dunkel und kannst diese Einführung jederzeit wieder ansehen." },
+    { title: "Los geht's",
+      text: "Antworten der KI bitte immer prüfen, bevor du sie übernimmst. Zwijg hilft dabei und markiert Wirkstoffe und Dosierungen, die nicht in deiner Frage standen." },
+    // Schritte mit eigener Ansicht werden erst beim Zeigen sichtbar, die anderen nur, wenn es sie gerade gibt
+  ].filter(s => s && (!s.el || s.view || tourTargets(s.el).length));
+}
+
+// Sichtbare Elemente zu einem Schritt, bei der Verwaltung mehrere Knöpfe auf einmal
+function tourTargets(selector) {
+  return [...document.querySelectorAll(selector)].filter(el => !el.hidden && el.getClientRects().length);
+}
+
+function startTour() {
+  if (!state.me || !$("tour").hidden) return;
+  document.querySelectorAll("dialog[open]").forEach(d => d.close());
+  tour.steps = tourSteps();
+  tour.i = 0;
+  $("tour").hidden = false;
+  document.addEventListener("keydown", tourKeys, true);
+  window.addEventListener("resize", placeTour);
+  showTourStep();
+}
+
+async function endTour() {
+  $("tour").hidden = true;
+  document.removeEventListener("keydown", tourKeys, true);
+  window.removeEventListener("resize", placeTour);
+  if (state.me && !state.me.tourSeen) {
+    state.me.tourSeen = true;
+    await api("POST", "/v1/me/tour").catch(() => {});
+  }
+}
+
+function showTourStep() {
+  const step = tour.steps[tour.i];
+  if (step.view && document.getElementById("view-" + step.view)?.hidden) show(step.view);
+  const last = tour.i === tour.steps.length - 1;
+
+  $("tourStep").textContent = `${tour.i + 1} von ${tour.steps.length}`;
+  $("tourTitle").textContent = step.title;
+  $("tourText").textContent = step.text;
+  $("tourBack").hidden = tour.i === 0;
+  $("tourNext").textContent = tour.i === 0 ? "Los" : last ? "Fertig" : "Weiter";
+  $("tourSkip").hidden = last;
+
+  const targets = step.el ? tourTargets(step.el) : [];
+  targets[0]?.scrollIntoView({ block: "nearest" });
+  placeTour();
+  $("tourNext").focus();
+}
+
+// Markierung um das Ziel legen und die Karte daneben, so dass sie ganz zu sehen ist
+function placeTour() {
+  const step = tour.steps[tour.i];
+  const spot = $("tourSpot"), card = $("tourCard");
+  const targets = step?.el ? tourTargets(step.el) : [];
+  const pad = 6, gap = 14, margin = 12;
+
+  card.classList.toggle("center", !targets.length);
+  spot.hidden = !targets.length;
+  $("tour").classList.toggle("dim", !targets.length);
+  if (!targets.length) {
+    card.style.left = card.style.top = "";
+    return;
+  }
+
+  const rects = targets.map(t => t.getBoundingClientRect());
+  const r = {
+    left: Math.min(...rects.map(x => x.left)) - pad, top: Math.min(...rects.map(x => x.top)) - pad,
+    right: Math.max(...rects.map(x => x.right)) + pad, bottom: Math.max(...rects.map(x => x.bottom)) + pad,
+  };
+  Object.assign(spot.style, { left: r.left + "px", top: r.top + "px", width: r.right - r.left + "px", height: r.bottom - r.top + "px" });
+
+  const w = card.offsetWidth, h = card.offsetHeight, vw = innerWidth, vh = innerHeight;
+  let left, top;
+  if (vw < 640) {
+    // Schmaler Bildschirm: Karte unten oder oben, je nachdem wo Platz ist
+    left = margin;
+    top = r.bottom + gap + h < vh ? r.bottom + gap : Math.max(margin, r.top - gap - h);
+  } else if (r.right + gap + w + margin < vw) {
+    left = r.right + gap; top = r.top;
+  } else if (r.left - gap - w > margin) {
+    left = r.left - gap - w; top = r.top;
+  } else if (r.bottom + gap + h + margin < vh) {
+    left = r.left; top = r.bottom + gap;
+  } else {
+    left = r.left; top = r.top - gap - h;
+  }
+  card.style.left = Math.min(Math.max(margin, left), vw - w - margin) + "px";
+  card.style.top = Math.min(Math.max(margin, top), vh - h - margin) + "px";
+}
+
+function tourKeys(e) {
+  if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); endTour(); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); tourGo(1); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); tourGo(-1); }
+}
+
+function tourGo(delta) {
+  const next = tour.i + delta;
+  if (next >= tour.steps.length) return endTour();
+  if (next < 0) return;
+  tour.i = next;
+  showTourStep();
+}
+
+$("tourNext").addEventListener("click", () => tourGo(1));
+$("tourBack").addEventListener("click", () => tourGo(-1));
+$("tourSkip").addEventListener("click", endTour);
 
 // Über Zwijg: Ersteller, Quellcode und Lizenzen. Geht auch ohne Anmeldung.
 async function openAbout() {

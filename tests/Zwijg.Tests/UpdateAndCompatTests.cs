@@ -223,6 +223,13 @@ public class UpdateAndCompatTests(UpdateFactory factory) : IClassFixture<UpdateF
         Assert.Equal("DENY", res.Headers.GetValues("X-Frame-Options").Single());
         Assert.Contains("script-src 'self'", res.Headers.GetValues("Content-Security-Policy").Single());
         Assert.Equal("nosniff", res.Headers.GetValues("X-Content-Type-Options").Single());
+
+        // Nach einem Update soll der Browser die neue Oberfläche holen und nicht die alte aus dem Speicher nehmen
+        foreach (var file in new[] { "/", "/js/app.js", "/css/app.css" })
+        {
+            var r = await factory.CreateClient().GetAsync(file);
+            Assert.True(r.Headers.CacheControl?.NoCache, file);
+        }
     }
 
     // Einstellungen: alte Dateien werden umgestellt und gesichert, neuere werden gelesen und nicht zerstört
@@ -256,6 +263,29 @@ public class UpdateAndCompatTests(UpdateFactory factory) : IClassFixture<UpdateF
         Assert.Equal("anna.weber", store.Current.Users.Single().Username);
         Assert.True(File.Exists(path + ".v0.bak"));
         Assert.Equal(OldSettings, File.ReadAllText(path + ".v0.bak"));
+    }
+
+    [Fact]
+    public void Wer_schon_da_ist_bekommt_nach_dem_Update_keine_Einfuehrung()
+    {
+        var store = Store(SettingsFile("""
+            { "schemaVersion": 2, "users": [ { "id": "a1", "name": "Dr. Anna Weber", "username": "anna.weber", "keyHash": "ABC", "admin": true } ] }
+            """));
+
+        Assert.True(store.Current.Users.Single().TourSeen);
+    }
+
+    [Fact]
+    public async Task Neue_Benutzer_sehen_die_Einfuehrung_einmal()
+    {
+        var client = Client("user-key");
+        var before = await client.GetFromJsonAsync<JsonObject>("/v1/me");
+        Assert.False(before!["tourSeen"]!.GetValue<bool>());
+
+        (await client.PostAsync("/v1/me/tour", null)).EnsureSuccessStatusCode();
+
+        var after = await client.GetFromJsonAsync<JsonObject>("/v1/me");
+        Assert.True(after!["tourSeen"]!.GetValue<bool>());
     }
 
     [Fact]
