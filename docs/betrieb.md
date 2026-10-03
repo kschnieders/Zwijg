@@ -72,7 +72,31 @@ Alles Wichtige liegt im Ordner `data`:
 - `history.db`: gespeicherte Unterhaltungen
 - `keys`: die Schlüssel zum Entschlüsseln
 
-Den ganzen Ordner regelmäßig sichern, am besten, während Zwijg kurz beendet ist.
+Den ganzen Ordner regelmäßig sichern. Am einfachsten macht das Zwijg selbst, siehe unten.
+
+### Tägliche Sicherung einrichten
+
+Als Admin links auf **Sicherung**:
+
+1. **Täglich sichern** einschalten
+2. **Zielordner** eintragen, am besten ein anderes Laufwerk, ein NAS oder eine USB Platte, zum Beispiel `E:\Zwijg-Sicherung` oder `/mnt/nas/zwijg`. Liegt er auf derselben Festplatte wie Zwijg, zeigt Zwijg eine Warnung.
+3. **Uhrzeit** wählen, Standard ist 02:00. War der Rechner dann aus, holt Zwijg die Sicherung beim nächsten Start nach.
+4. **Passwort** festlegen, mindestens 10 Zeichen, und **aufschreiben**. Ohne dieses Passwort lässt sich keine Sicherung zurückspielen.
+5. **Speichern**. Die erste Sicherung startet wenige Minuten später, oder gleich mit **Jetzt sichern**.
+
+Jede Sicherung ist eine einzelne verschlüsselte Datei, zum Beispiel `zwijg-sicherung-2026-10-04-020000.zwijg`. Darin sind Einstellungen, Verlauf, Protokoll und Schlüssel, aber nicht die Sprachmodelle fürs Diktieren. Es bleiben die letzten 7 Tage und eine pro Woche aus den letzten 4 Wochen.
+
+Ist keine Sicherung eingerichtet, schlägt eine fehl oder ist die letzte älter als zwei Tage, sehen Admins nach der Anmeldung einen Hinweis. Wer den Server anders sichert, etwa komplett, schaltet **Wir sichern den Server anders** ein. Dann muss der Ordner `data` dabei sein.
+
+### Sicherung zurückspielen
+
+Zwijg beenden und im Ordner von Zwijg ausführen:
+
+```
+Zwijg.Gateway.exe --zurueckspielen E:\Zwijg-Sicherung\zwijg-sicherung-2026-10-04-020000.zwijg
+```
+
+Unter Linux `./Zwijg.Gateway`. In Docker erst `docker compose stop zwijg`, dann `docker compose run --rm -v /mnt/nas/zwijg:/sicherung zwijg --zurueckspielen /sicherung/zwijg-sicherung-2026-10-04-020000.zwijg`. Das Beenden ist dort besonders wichtig, weil Zwijg im Container nicht erkennen kann, ob ein anderer Container noch läuft. Zwijg fragt nach dem Passwort und prüft die Datei, bevor es etwas ändert. Der bisherige Stand kommt in einen Ordner `data-vor-wiederherstellung-<Datum>` daneben, es geht also nichts verloren. Danach Zwijg wieder starten.
 
 Wichtig unter Windows: Die Schlüssel in `keys` sind zusätzlich an das Windows Konto gebunden, unter dem Zwijg läuft. Auf einem anderen Rechner oder unter einem anderen Konto lassen sie sich nicht öffnen. Dann müssen API Schlüssel der Anbieter neu eingetragen werden, und gespeicherte Unterhaltungen sind nicht mehr lesbar. Einstellungen, Benutzer und Protokoll bleiben erhalten, die Echtheit älterer Protokolleinträge lässt sich dann aber nicht mehr prüfen.
 
@@ -80,7 +104,7 @@ Wichtig unter Windows: Die Schlüssel in `keys` sind zusätzlich an das Windows 
 
 Wer eine Sicherung des Ordners `data` hat, hat auch die Schlüssel. Unter Linux und in Docker liegen sie ohne Zertifikat (siehe unten) im Klartext. Damit lassen sich API Schlüssel und gespeicherte Unterhaltungen entschlüsseln und Anmeldungen fälschen. Das betrifft auch `audit.db.key`: Dieser Schlüssel für die Echtheitsprüfung des Protokolls ist mit den Schlüsseln in `keys` verschlüsselt. Wer beides hat, kann Protokolleinträge ändern und die Hashes passend neu berechnen.
 
-- Sicherungen verschlüsselt ablegen, zum Beispiel in einem verschlüsselten Archiv oder auf einem verschlüsselten Laufwerk, und nicht frei im Praxisnetz.
+- Die Sicherungen von Zwijg selbst sind mit dem Passwort verschlüsselt. Eigene Sicherungen des Ordners `data` verschlüsselt ablegen, zum Beispiel in einem verschlüsselten Archiv oder auf einem verschlüsselten Laufwerk, und nicht frei im Praxisnetz.
 - Das gilt auch für die Sicherungen der Update Skripte, `data-sicherung-*.tar.gz` (Linux) und `data-sicherung-*.zip` (Windows) im Zwijg Ordner. Nicht mehr gebrauchte Sicherungen löschen.
 - Ein Zertifikat für die Schlüssel getrennt von den Daten aufbewahren. Wer nur die Datensicherung hat, kann dann nichts entschlüsseln.
 

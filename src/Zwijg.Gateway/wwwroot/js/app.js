@@ -588,7 +588,10 @@ $("updCheck").addEventListener("change", async e => {
   }
 });
 
-$("dashStatus").addEventListener("click", e => { if (e.target.closest("#versionRow")) openUpdateDialog(); });
+$("dashStatus").addEventListener("click", e => {
+  if (e.target.closest("#versionRow")) openUpdateDialog();
+  if (e.target.closest("#backupRow")) show("backup");
+});
 $("dashStatus").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.closest("#versionRow")) openUpdateDialog(); });
 
 $("updHowto").addEventListener("click", async e => {
@@ -828,6 +831,127 @@ $("tourNext").addEventListener("click", () => tourGo(1));
 $("tourBack").addEventListener("click", () => tourGo(-1));
 $("tourSkip").addEventListener("click", endTour);
 
+// Sicherung, nur für Admins
+const BACKUP_STATES = {
+  ok: ["ok", "check", "Sicherung läuft"],
+  pending: ["info", "clock", "Eingerichtet, die erste Sicherung kommt bald"],
+  off: ["warn", "alert", "Keine Sicherung eingerichtet"],
+  failed: ["warn", "alert", "Letzte Sicherung fehlgeschlagen"],
+  stale: ["warn", "alert", "Letzte Sicherung ist älter als zwei Tage"],
+  external: ["", "info", "Die Praxis sichert selbst"],
+};
+let backupInfo = null;
+
+function backupNeedsAttention(state) {
+  return ["off", "failed", "stale"].includes(state);
+}
+
+async function loadBackup() {
+  const r = await api("GET", "/admin/backup");
+  backupInfo = r;
+  const s = r.settings;
+  $("bkEnabled").checked = s.enabled;
+  $("bkExternal").checked = s.external;
+  $("bkDir").value = s.directory || "";
+  $("bkTime").value = s.time || "02:00";
+  $("bkPw").value = $("bkPw2").value = "";
+  $("bkPwLabel").textContent = s.hasPassword ? "Neues Passwort (leer lassen zum Behalten)" : "Passwort für die Verschlüsselung";
+  $("bkRun").disabled = !s.enabled;
+
+  const last = r.status.lastSuccess;
+  const verdict = {
+    ok: ["ok", "check", "Sicherung läuft", `Letzte Sicherung ${fmtDateTime(last)}, nächste täglich um ${esc(s.time)} Uhr.`],
+    pending: ["", "clock", "Eingerichtet", `Die erste Sicherung startet in den nächsten Minuten, danach täglich um ${esc(s.time)} Uhr.`],
+    off: ["warn", "alert", "Keine Sicherung eingerichtet", "Fällt die Festplatte aus, sind Benutzer, Regeln, Verlauf und das Protokoll weg. Bitte einen Zielordner und ein Passwort festlegen."],
+    failed: ["bad", "alert", "Letzte Sicherung fehlgeschlagen", esc(r.status.lastError || "") + (last ? ` Die letzte gelungene war ${fmtDateTime(last)}.` : "")],
+    stale: ["bad", "alert", "Letzte Sicherung ist zu alt", `Die letzte gelungene war ${fmtDateTime(last)}. Läuft der Rechner nachts, und ist das Ziel erreichbar?`],
+    external: ["", "info", "Die Praxis sichert selbst", "Zwijg sichert nicht und warnt auch nicht. Wichtig ist, dass der ganze Ordner data mitgesichert wird."],
+  }[r.state];
+  $("bkVerdict").innerHTML = `<div class="doc-verdict ${verdict[0]}">${icon(verdict[1])}<div><strong>${verdict[2]}</strong><span>${verdict[3]}</span></div></div>`
+    + (r.sameDisk ? `<div class="doc-verdict warn">${icon("alert")}<div><strong>Gleiche Festplatte</strong><span>Das Ziel liegt auf derselben Festplatte wie Zwijg. Bei einem Plattenausfall wäre die Sicherung auch weg. Besser ein anderes Laufwerk, ein NAS oder eine USB Platte.</span></div></div>` : "");
+
+  $("bkFiles").innerHTML = r.files.length
+    ? `<div class="backup-files">${r.files.map(f => `<div class="backup-file">${icon("lock")}<span class="backup-name" title="${esc(f.name)}">${fmtDateTime(f.created)}</span><span class="muted small">${f.size < 1048576 ? Math.max(1, Math.round(f.size / 1024)) + " KB" : (f.size / 1048576).toFixed(1) + " MB"}</span></div>`).join("")}</div>`
+    : '<p class="muted small">Noch keine Sicherung in diesem Ordner.</p>';
+
+  const newest = r.files[0] ? (s.directory.replace(/[\\/]+$/, "") + (s.directory.includes("\\") ? "\\" : "/") + r.files[0].name) : "<Datei>";
+  $("bkRestoreCmd").textContent = `Zwijg.Gateway --zurueckspielen "${newest}"`;
+  renderBackupNav();
+}
+
+async function saveBackup() {
+  const pw = $("bkPw").value;
+  if (pw && pw !== $("bkPw2").value) {
+    toast("Die beiden Passwörter sind nicht gleich", true);
+    return;
+  }
+  try {
+    await api("PUT", "/admin/backup", {
+      enabled: $("bkEnabled").checked,
+      external: $("bkExternal").checked,
+      directory: $("bkDir").value.trim(),
+      time: $("bkTime").value || "02:00",
+      password: pw || null,
+    });
+    toast(pw ? "Gespeichert. Bitte das Passwort sicher aufbewahren." : "Gespeichert");
+    await loadBackup();
+    await reloadMe();
+  } catch (err) { toast(err.message, true); }
+}
+
+async function runBackup() {
+  const b = $("bkRun");
+  b.disabled = true;
+  const label = b.innerHTML;
+  b.innerHTML = `${icon("clock")}wird gesichert ...`;
+  try {
+    await api("POST", "/admin/backup/run");
+    toast("Sicherung erstellt");
+  } catch (err) { toast(err.message, true); }
+  finally {
+    b.innerHTML = label;
+    await loadBackup().catch(() => {});
+    await reloadMe();
+  }
+}
+
+$("bkSave").addEventListener("click", saveBackup);
+$("bkRun").addEventListener("click", runBackup);
+$("bkEnabled").addEventListener("change", () => { if ($("bkEnabled").checked) $("bkExternal").checked = false; });
+$("bkExternal").addEventListener("change", () => { if ($("bkExternal").checked) $("bkEnabled").checked = false; });
+
+// Roter Punkt in der Navigation und Hinweis nach der Anmeldung, solange etwas nicht stimmt
+function renderBackupNav() {
+  $("backupDot").hidden = !(state.me?.admin && backupNeedsAttention(state.me.backup?.state));
+}
+
+function backupBannerHtml() {
+  const b = state.me?.backup;
+  if (!state.me?.admin || !backupNeedsAttention(b?.state)) return "";
+  try { if (sessionStorage.getItem("zwijg.backupSeen") === b.state) return ""; } catch { }
+  const text = {
+    off: "Fällt die Festplatte aus, sind Benutzer, Regeln, Verlauf und Protokoll weg.",
+    failed: b.lastError || "",
+    stale: b.lastSuccess ? `Die letzte gelungene Sicherung war ${fmtDateTime(b.lastSuccess)}.` : "",
+  }[b.state];
+  return `<div class="banner ${b.state === "off" ? "Warning" : "Critical"}">
+    ${icon("alert")}
+    <div class="banner-body">
+      <div class="banner-title">${esc(BACKUP_STATES[b.state][2])}</div>
+      <div class="banner-text">${esc(text)} <button type="button" class="link-btn" data-backup-open>Sicherung einrichten</button></div>
+    </div>
+    <button type="button" class="icon-btn" data-backup-seen title="Bis zur nächsten Anmeldung ausblenden" aria-label="Ausblenden">${icon("x")}</button>
+  </div>`;
+}
+
+function backupStatusRow() {
+  const b = state.me?.backup;
+  if (!b) return "";
+  const [kind, ico, label] = BACKUP_STATES[b.state] || BACKUP_STATES.off;
+  const text = b.state === "ok" ? `zuletzt ${relTime(b.lastSuccess)}` : label;
+  return `<div class="status-row clickable" id="backupRow" tabindex="0" title="Sicherung"><span class="label">Sicherung</span><span class="version-status">${chip(text, kind, ico)}</span></div>`;
+}
+
 // Über Zwijg: Ersteller, Quellcode und Lizenzen. Geht auch ohne Anmeldung.
 async function openAbout() {
   $("aboutDialog").showModal();
@@ -969,11 +1093,18 @@ function bannerHtml(a, dismiss = true) {
 }
 
 function renderBanners() {
-  $("banners").innerHTML = updateBannerHtml() + (state.me.announcements || []).map(a => bannerHtml(a)).join("");
+  $("banners").innerHTML = backupBannerHtml() + updateBannerHtml() + (state.me.announcements || []).map(a => bannerHtml(a)).join("");
+  renderBackupNav();
 }
 
 $("banners").addEventListener("click", async e => {
   if (e.target.closest("[data-update-open]")) { openUpdateDialog(); return; }
+  if (e.target.closest("[data-backup-open]")) { show("backup"); return; }
+  if (e.target.closest("[data-backup-seen]")) {
+    try { sessionStorage.setItem("zwijg.backupSeen", state.me.backup.state); } catch { }
+    renderBanners();
+    return;
+  }
   if (e.target.closest("[data-update-seen]")) { updateSeen(versionInfo?.latest); renderBanners(); return; }
   const btn = e.target.closest("[data-dismiss]");
   if (!btn) return;
@@ -994,7 +1125,7 @@ function show(view) {
   document.querySelectorAll(".nav button").forEach(b => b.classList.toggle("active", b.dataset.view === view));
   document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "view-" + view);
 
-  const loaders = { dashboard: loadDashboard, connections: loadConnections, rules: loadRules, users: loadUsers, notices: loadNotices, audit: loadAudit };
+  const loaders = { dashboard: loadDashboard, connections: loadConnections, rules: loadRules, users: loadUsers, notices: loadNotices, audit: loadAudit, backup: loadBackup };
   // Nur eigene Einträge aufrufen, nie etwas wie "constructor" aus der Adresszeile
   if (Object.hasOwn(loaders, view))
     loaders[view]().catch(err => toast(err.message, true));
@@ -1610,6 +1741,7 @@ async function loadDashboard() {
     <div class="status-row"><span class="label">Cloud</span>${conn("cloud", s.routes.cloud, s.routes.cloudReady)}</div>
     <div class="status-row"><span class="label">Benutzer</span><strong>${s.users.active} aktiv</strong><span class="muted small">von ${s.users.total}</span></div>
     <div class="status-row"><span class="label">Aktive Hinweise</span><strong>${s.announcements}</strong></div>
+    ${backupStatusRow()}
     <div class="status-row clickable" id="versionRow" tabindex="0" title="Version und Updates"><span class="label">Version</span><span class="version-status" id="versionStatus"></span></div>`;
   renderVersionRow();
   loadVersion();
