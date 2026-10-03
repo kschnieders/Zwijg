@@ -4,6 +4,22 @@ Was sich in den einzelnen Versionen von Zwijg geändert hat. Die neueste Version
 
 Ein neuer Abschnitt entsteht mit dem Workflow **Changelog vorbereiten** aus den gemergten Pull Requests. Steht ein Abschnitt **Sicherheit** drin, zeigt Zwijg das Update als Sicherheitsupdate an.
 
+## 0.3.0 (2026-10-03)
+
+### Neu
+
+- Antwort-Check: erfundene Medikamente, Dosierungen und Laborwerte markieren (#23, @kschnieders)
+- Kurze Einführung beim ersten Anmelden (#25, @kschnieders)
+- Tägliche verschlüsselte Sicherung mit Zurückspielen (#27, @kschnieders)
+
+### Verbesserungen
+
+- Text schützen: eigene Stellen verstecken wie im Chat (#24, @kschnieders)
+
+### Fehler behoben
+
+- Sauberer erster Start: klare Meldung bei belegtem Port, Startschlüssel geht nicht verloren (#26, @kschnieders)
+
 ## 0.2.0 (2026-10-02)
 
 ### Wichtig beim Update
