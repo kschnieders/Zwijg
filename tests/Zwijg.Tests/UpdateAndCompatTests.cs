@@ -259,6 +259,29 @@ public class UpdateAndCompatTests(UpdateFactory factory) : IClassFixture<UpdateF
     }
 
     [Fact]
+    public void Wer_schon_da_ist_bekommt_nach_dem_Update_keine_Einfuehrung()
+    {
+        var store = Store(SettingsFile("""
+            { "schemaVersion": 2, "users": [ { "id": "a1", "name": "Dr. Anna Weber", "username": "anna.weber", "keyHash": "ABC", "admin": true } ] }
+            """));
+
+        Assert.True(store.Current.Users.Single().TourSeen);
+    }
+
+    [Fact]
+    public async Task Neue_Benutzer_sehen_die_Einfuehrung_einmal()
+    {
+        var client = Client("user-key");
+        var before = await client.GetFromJsonAsync<JsonObject>("/v1/me");
+        Assert.False(before!["tourSeen"]!.GetValue<bool>());
+
+        (await client.PostAsync("/v1/me/tour", null)).EnsureSuccessStatusCode();
+
+        var after = await client.GetFromJsonAsync<JsonObject>("/v1/me");
+        Assert.True(after!["tourSeen"]!.GetValue<bool>());
+    }
+
+    [Fact]
     public void Fremde_Vorlagen_Ids_aus_alten_Einstellungen_werden_ersetzt()
     {
         var path = SettingsFile("""

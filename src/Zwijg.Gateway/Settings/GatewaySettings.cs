@@ -111,6 +111,9 @@ public sealed class UserRecord
 
     public List<string> DismissedAnnouncements { get; set; } = [];
 
+    // Kurze Einführung beim ersten Anmelden gesehen oder übersprungen
+    public bool TourSeen { get; set; }
+
     // Anmeldung mit Benutzername und Passwort. Ohne Passwort geht nur der Zugangsschlüssel.
     public string Username { get; set; } = "";
     public string? PasswordHash { get; set; }

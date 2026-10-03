@@ -1160,3 +1160,16 @@ mark.check { background: var(--warn-soft); color: inherit; border-radius: 3px; p
 /* Verstecken bei Text schützen */
 .protect-hint { margin-top: 8px; }
 #protectSecrets { margin-top: 10px; }
+
+/* Einführung beim ersten Anmelden */
+
+.tour { position: fixed; inset: 0; z-index: 1000; }
+.tour.dim { background: rgba(10, 16, 14, .55); }
+.tour-spot { position: fixed; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(10, 16, 14, .55); outline: 2px solid var(--accent); transition: all .25s ease; pointer-events: none; }
+.tour-card { position: fixed; width: min(360px, calc(100vw - 24px)); background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 16px; padding: 18px 18px 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, .3); transition: left .25s ease, top .25s ease; }
+.tour-card.center { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 24px)); }
+.tour-step { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.tour-card h3 { margin: 6px 0 6px; font-size: 18px; }
+.tour-card p { margin: 0; color: var(--text-2); line-height: 1.55; font-size: 14.5px; }
+.tour-foot { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+@media (prefers-reduced-motion: reduce) { .tour-spot, .tour-card { transition: none; } }

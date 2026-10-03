@@ -286,6 +286,7 @@ public static class Endpoints
                 username = record.Username,
                 hasPassword = record.PasswordHash != null,
                 mustChangePassword = record.MustChangePassword,
+                tourSeen = record.TourSeen,
                 viaSession = user.ViaSession,
                 admin = user.IsAdmin,
                 showPreview = user.ShowPreview,
@@ -301,6 +302,18 @@ public static class Endpoints
                 templates = settings.Current.Templates.Where(t => t.Enabled).Select(t => new { t.Id, t.Title, t.Text, t.Mode }),
                 history = new { settings.Current.History.Enabled, settings.Current.History.MaxPinned }
             });
+        });
+
+        // Einführung gesehen oder übersprungen. Wieder ansehen geht jederzeit über das Konto Menü.
+        app.MapPost("/v1/me/tour", (HttpContext ctx, SettingsStore settings) =>
+        {
+            var user = ApiKeyMiddleware.GetUser(ctx);
+            settings.Update(s =>
+            {
+                if (s.Users.FirstOrDefault(x => x.Id == user.Id) is { } u)
+                    u.TourSeen = true;
+            });
+            return Results.Ok(new { ok = true });
         });
 
         app.MapPost("/v1/announcements/{id}/dismiss", (string id, HttpContext ctx, SettingsStore settings) =>

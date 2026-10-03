@@ -56,6 +56,7 @@ public sealed class SettingsStore
     [
         s => FillUsernames(s), // 0 auf 1: Benutzernamen für die Anmeldung mit Passwort
         s => PromptTemplate.FixIds(s.Templates), // 1 auf 2: fremde Vorlagen Ids aus älteren Versionen ersetzen
+        s => s.Users.ForEach(u => u.TourSeen = true), // 2 auf 3: wer schon da ist, kennt Zwijg und bekommt keine Einführung
     ];
 
     public static int CurrentSchema => Migrations.Length;
