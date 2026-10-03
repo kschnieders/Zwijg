@@ -211,6 +211,21 @@ app.UseAuthentication();
 app.UseMiddleware<ApiKeyMiddleware>();
 app.MapGatewayEndpoints();
 
+// Belegten Port vorher erkennen. Sonst bricht Kestrel mit einer langen Fehlerausgabe ab.
+// Nur beim echten Server, in den Tests läuft Zwijg ohne Port.
+var realServer = app.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>().GetType().Name.Contains("Kestrel");
+if (realServer && StartupChecks.FindBusyUrl(app.Configuration["urls"]) is { } busy)
+{
+    Console.Error.WriteLine(StartupChecks.BusyMessage(busy));
+    Environment.ExitCode = 1;
+    return;
+}
+
+// Unter den Logzeilen gut sichtbar: Adresse und, solange nötig, der Startschlüssel
+app.Lifetime.ApplicationStarted.Register(() =>
+    Console.WriteLine(StartupChecks.ReadyBanner(app.Urls.FirstOrDefault() ?? StartupChecks.DefaultUrl,
+        app.Services.GetRequiredService<SettingsStore>().StartKeyToShow)));
+
 app.Run();
 
 static string KeyDirectory(GatewayOptions gw) =>

@@ -112,7 +112,11 @@ public sealed class ApiKeyMiddleware(RequestDelegate next, SettingsStore store, 
         foreach (var u in store.Current.Users)
         {
             if (CryptographicOperations.FixedTimeEquals(given, Encoding.ASCII.GetBytes(u.KeyHash)))
+            {
+                if (u.Active && u.StartKey)
+                    store.StartKeyUsed(u.Id);
                 return u.Active ? ToGatewayUser(u, viaSession: false) : Locked;
+            }
         }
 
         return null;

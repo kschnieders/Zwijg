@@ -4,13 +4,18 @@
 
 Das Paket für Windows oder Linux aus den [Releases](https://github.com/kschnieders/zwijg/releases/latest) entpacken und `Zwijg.Gateway.exe` (Windows) oder `./Zwijg.Gateway` (Linux) starten.
 
-Beim allerersten Start steht in der Konsole eine Zeile wie diese:
+Beim ersten Start steht unten in der Konsole ein Kasten wie dieser:
 
 ```
-Zwijg: Kein Admin konfiguriert. Einmaliger Startschlüssel: zw_...
+============================================================
+  Zwijg ist bereit:   http://localhost:5000
+  Startschlüssel:     zw_...
+============================================================
 ```
 
-Den Schlüssel kopieren. Er wird nur dieses eine Mal angezeigt.
+Den Schlüssel kopieren. Solange sich niemand damit angemeldet hat, gibt es bei jedem Start einen neuen, der alte gilt dann nicht mehr.
+
+Steht stattdessen **Port 5000 ist schon belegt** da, läuft Zwijg schon oder ein anderes Programm nutzt den Port. Dann in der Datei `appsettings.json` eine Zeile `"Urls": "http://localhost:5050",` ergänzen und Zwijg unter dieser Adresse öffnen.
 
 ## Anmelden
 
