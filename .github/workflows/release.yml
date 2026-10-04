@@ -73,6 +73,12 @@ jobs:
             (cd out/$rid && zip -qr ../../zwijg-$VERSION-$rid.zip .)
           done
 
+      # Vor dem Veröffentlichen: Update von der letzten Version mit echten Daten
+      - name: Update von der letzten Version testen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tests/update/test-upgrade.sh out/linux-x64
+
       # docker-compose.yml zum Starten ohne Quellcode. Zeigt auf latest, damit "docker compose pull" Updates holt.
       - name: Docker Paket bauen
         run: |

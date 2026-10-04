@@ -1,0 +1,32 @@
+name: Update von der letzten Version
+
+# Spielt bei jedem Pull Request das Update von der zuletzt veröffentlichten Version durch, mit echten Daten.
+# So fällt auf, wenn eine Änderung bestehende Installationen kaputt machen würde.
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Programm bauen
+        run: dotnet publish src/Zwijg.Gateway -c Release -r linux-x64 --self-contained -o programm
+
+      - name: Update testen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tests/update/test-upgrade.sh programm
