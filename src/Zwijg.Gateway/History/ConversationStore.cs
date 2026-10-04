@@ -15,8 +15,12 @@ public sealed record ChatMessage(string Role, string Content, System.Text.Json.N
 
 public sealed record ConversationInfo(string Id, string Title, bool Pinned, DateTimeOffset Created, DateTimeOffset Updated, int MessageCount);
 
-// Secrets: was jemand in dieser Unterhaltung selbst als geheim markiert hat
-public sealed record Conversation(ConversationInfo Info, IReadOnlyList<ChatMessage> Messages, IReadOnlyList<SecretTerm> Secrets);
+// Secrets: was jemand in dieser Unterhaltung selbst als geheim markiert hat. Patient: Inhalt des Patientenfelds.
+public sealed record Conversation(ConversationInfo Info, IReadOnlyList<ChatMessage> Messages, IReadOnlyList<SecretTerm> Secrets, string? Patient = null)
+{
+    // Alles, was in dieser Unterhaltung versteckt wird
+    public IReadOnlyList<SecretTerm> AllSecrets => [.. Secrets, .. PatientTerms.Expand(Patient)];
+}
 
 public sealed record ConversationPage(IReadOnlyList<ConversationInfo> Items, int Total);
 
@@ -54,7 +58,9 @@ public sealed class ConversationStore
             CREATE INDEX IF NOT EXISTS IX_Conv_User ON Conversations (UserId, Pinned, Updated);
             """,
             // Schritt 2: selbst markierte Geheimnisse, verschlüsselt wie die Nachrichten
-            "ALTER TABLE Conversations ADD COLUMN Secrets TEXT");
+            "ALTER TABLE Conversations ADD COLUMN Secrets TEXT",
+            // Schritt 3: Patientenfeld, ebenso verschlüsselt
+            "ALTER TABLE Conversations ADD COLUMN Patient TEXT");
     }
 
     public async Task<ConversationPage> ListAsync(string userId, int limit, int offset, CancellationToken ct = default)
@@ -84,7 +90,7 @@ public sealed class ConversationStore
     {
         await using var con = await OpenAsync(ct);
         var cmd = new SqliteCommand(
-            "SELECT Id, Title, Pinned, Created, Updated, MessageCount, Messages, Secrets FROM Conversations WHERE Id = $id AND UserId = $u", con);
+            "SELECT Id, Title, Pinned, Created, Updated, MessageCount, Messages, Secrets, Patient FROM Conversations WHERE Id = $id AND UserId = $u", con);
         cmd.Parameters.AddWithValue("$id", id);
         cmd.Parameters.AddWithValue("$u", userId);
 
@@ -93,24 +99,26 @@ public sealed class ConversationStore
             return null;
 
         var messages = JsonSerializer.Deserialize<List<ChatMessage>>(Unprotect(r.GetString(6)) ?? "[]") ?? [];
-        return new Conversation(ReadInfo(r), messages, ReadSecrets(r, 7));
+        return new Conversation(ReadInfo(r), messages, ReadSecrets(r, 7), ReadPatient(r, 8));
     }
 
     // Legt eine neue Unterhaltung an oder ersetzt die Nachrichten einer bestehenden. Gibt die Id zurück.
     public async Task<string> SaveAsync(string userId, string? id, IReadOnlyList<ChatMessage> messages, string title,
-        IReadOnlyList<SecretTerm>? secrets = null, CancellationToken ct = default)
+        IReadOnlyList<SecretTerm>? secrets = null, string? patient = null, CancellationToken ct = default)
     {
         var now = Format(DateTimeOffset.UtcNow);
         var json = _protector.Protect(JsonSerializer.Serialize(messages));
         object secretJson = secrets is { Count: > 0 } ? _protector.Protect(JsonSerializer.Serialize(secrets)) : DBNull.Value;
+        object patientText = string.IsNullOrWhiteSpace(patient) ? DBNull.Value : _protector.Protect(patient.Trim());
         await using var con = await OpenAsync(ct);
 
         if (id != null)
         {
             var update = new SqliteCommand(
-                "UPDATE Conversations SET Messages = $m, Secrets = $s, MessageCount = $n, Updated = $now WHERE Id = $id AND UserId = $u", con);
+                "UPDATE Conversations SET Messages = $m, Secrets = $s, Patient = $p, MessageCount = $n, Updated = $now WHERE Id = $id AND UserId = $u", con);
             update.Parameters.AddWithValue("$m", json);
             update.Parameters.AddWithValue("$s", secretJson);
+            update.Parameters.AddWithValue("$p", patientText);
             update.Parameters.AddWithValue("$n", messages.Count);
             update.Parameters.AddWithValue("$now", now);
             update.Parameters.AddWithValue("$id", id);
@@ -122,9 +130,10 @@ public sealed class ConversationStore
         // Neue Id immer vom Server, nie vom Client übernehmen
         var newId = Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant();
         var insert = new SqliteCommand(
-            "INSERT INTO Conversations (Id, UserId, Title, Pinned, Created, Updated, MessageCount, Messages, Secrets) " +
-            "VALUES ($id, $u, $t, 0, $now, $now, $n, $m, $s)", con);
+            "INSERT INTO Conversations (Id, UserId, Title, Pinned, Created, Updated, MessageCount, Messages, Secrets, Patient) " +
+            "VALUES ($id, $u, $t, 0, $now, $now, $n, $m, $s, $p)", con);
         insert.Parameters.AddWithValue("$s", secretJson);
+        insert.Parameters.AddWithValue("$p", patientText);
         insert.Parameters.AddWithValue("$id", newId);
         insert.Parameters.AddWithValue("$u", userId);
         insert.Parameters.AddWithValue("$t", _protector.Protect(title));
@@ -195,7 +204,7 @@ public sealed class ConversationStore
         var candidates = new List<Conversation>();
         await using (var con = await OpenAsync(ct))
         {
-            var cmd = new SqliteCommand("SELECT Id, Title, Pinned, Created, Updated, MessageCount, Messages, Secrets FROM Conversations", con);
+            var cmd = new SqliteCommand("SELECT Id, Title, Pinned, Created, Updated, MessageCount, Messages, Secrets, Patient FROM Conversations", con);
             await using var r = await cmd.ExecuteReaderAsync(ct);
             while (await r.ReadAsync(ct))
             {
@@ -203,7 +212,7 @@ public sealed class ConversationStore
                 if (!info.Title.Contains('…'))
                     continue;
                 var messages = JsonSerializer.Deserialize<List<ChatMessage>>(Unprotect(r.GetString(6)) ?? "[]") ?? [];
-                candidates.Add(new Conversation(info, messages, ReadSecrets(r, 7)));
+                candidates.Add(new Conversation(info, messages, ReadSecrets(r, 7), ReadPatient(r, 8)));
             }
         }
 
@@ -223,6 +232,9 @@ public sealed class ConversationStore
 
         return changed;
     }
+
+    private string? ReadPatient(SqliteDataReader r, int column) =>
+        r.IsDBNull(column) ? null : Unprotect(r.GetString(column));
 
     private List<SecretTerm> ReadSecrets(SqliteDataReader r, int column) =>
         r.IsDBNull(column) ? [] : JsonSerializer.Deserialize<List<SecretTerm>>(Unprotect(r.GetString(column)) ?? "[]") ?? [];
@@ -297,8 +309,8 @@ public sealed class ConversationCleanup(
                 if (first == null)
                     return c.Info.Title;
                 return first.Display is { } display
-                    ? await HistoryEndpoints.SafeDisplayTitleAsync(display, pseudonymizer, stoppingToken, c.Secrets)
-                    : await HistoryEndpoints.SafeTitleAsync(first.Content, pseudonymizer, stoppingToken, c.Secrets);
+                    ? await HistoryEndpoints.SafeDisplayTitleAsync(display, pseudonymizer, stoppingToken, c.AllSecrets)
+                    : await HistoryEndpoints.SafeTitleAsync(first.Content, pseudonymizer, stoppingToken, c.AllSecrets);
             }, stoppingToken);
 
             if (retitled > 0)

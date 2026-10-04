@@ -59,7 +59,8 @@ public static class Endpoints
                 return Results.Json(new { error = "Ungültiges JSON" }, statusCode: 400);
 
             // Muss vor der Pipeline raus, sonst ginge das Feld mit an das Modell
-            var (save, conversationId, secrets) = HistoryEndpoints.TakeZwijg(body);
+            var (save, conversationId, ownSecrets, patient) = HistoryEndpoints.TakeZwijg(body);
+            List<SecretTerm> secrets = [.. ownSecrets, .. PatientTerms.Expand(patient)];
 
             // Viele Programme wollen Streaming. Die Platzhalter lassen sich aber erst in der ganzen
             // Antwort sicher zurücktauschen, deshalb kommt sie am Ende als ein einziger Block.
@@ -89,7 +90,8 @@ public static class Endpoints
                 var title = conversationId != null ? ""
                     : first.Display is { } display ? await HistoryEndpoints.SafeDisplayTitleAsync(display, pseudonymizer, ct, secrets)
                     : await HistoryEndpoints.SafeTitleAsync(first.Content, pseudonymizer, ct, secrets);
-                var savedId = await history.SaveAsync(user.Id, conversationId, messages, title, secrets, ct);
+                // Selbst markierte Begriffe und Patientenfeld getrennt speichern, beides verschlüsselt
+                var savedId = await history.SaveAsync(user.Id, conversationId, messages, title, ownSecrets, patient, ct);
                 ctx.Response.Headers["X-Zwijg-Conversation"] = savedId;
             }
 
@@ -242,7 +244,8 @@ public static class Endpoints
 
             var map = new PseudonymMap();
             var clean = TextSanitizer.Clean(req.Text ?? "").Text;
-            var pseudo = await pseudonymizer.PseudonymizeAsync(clean, map, ct, HistoryEndpoints.ReadSecrets(req.Secrets));
+            var pseudo = await pseudonymizer.PseudonymizeAsync(clean, map, ct,
+                [.. HistoryEndpoints.ReadSecrets(req.Secrets), .. PatientTerms.Expand(HistoryEndpoints.ReadPatient(req.Patient))]);
             var injection = detector.Scan(req.Text ?? "");
             var rules = RuleEngine.Find(clean, settings.Current.ProtectionRules, a => a != RuleAction.Replace)
                 .Select(h => h.Rule).DistinctBy(r => r.Id).ToList();
@@ -597,7 +600,7 @@ public static class Endpoints
     }
 }
 
-public sealed record CheckRequest(string? Text, JsonArray? Secrets = null);
+public sealed record CheckRequest(string? Text, JsonArray? Secrets = null, JsonNode? Patient = null);
 
 // Filter aus der Adresszeile, z.B. /admin/audit?q=blutdruck&status=Blocked&from=2026-09-01
 public sealed record AuditFilter(

@@ -1182,3 +1182,12 @@ mark.check { background: var(--warn-soft); color: inherit; border-radius: 3px; p
 .backup-file .ico { width: 15px; height: 15px; color: var(--accent); flex: none; }
 .backup-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--crit); margin-left: auto; }
+
+/* Patient dieser Unterhaltung */
+.patient-bar { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.patient-bar > .ico { width: 16px; height: 16px; color: var(--accent); flex: none; }
+.patient-bar label { font-size: 13px; font-weight: 700; color: var(--text-2); }
+.patient-bar input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 14px; color: var(--text); }
+.patient-hint { font-size: 12px; color: var(--accent); font-weight: 600; white-space: nowrap; }
+@media (max-width: 760px) { .patient-hint { display: none; } }
+.patient-bar .icon-btn { width: 28px; height: 28px; }

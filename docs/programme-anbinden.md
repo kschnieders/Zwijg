@@ -44,6 +44,7 @@ print(answer.choices[0].message.content)
 
 ## Gut zu wissen
 
+- Mit `"zwijg": { "patient": "Kowalczyk, Anna, 12.03.1980" }` in der Anfrage versteckt Zwijg Name und Geburtsdatum wie beim Patientenfeld im Chat. Das Feld geht nicht an das Modell.
 - Stehen in der Antwort Wirkstoffe, Dosierungen oder Laborwerte, die nicht in der Frage vorkamen, hängt Zwijg einen Hinweis an: `Hinweis von Zwijg: Diese Angaben stehen nicht in der Frage, bitte prüfen: ...`. Die Fundstellen stehen zusätzlich im Feld `zwijg_check` der Antwort, die Anzahl im Kopf `X-Zwijg-Check`. Den Hinweis im Text schalten Admins unter **Regeln**, **Anweisungen** ab.
 - Streaming wird unterstützt, die Antwort kommt aber am Stück. Zwijg braucht die ganze Antwort, um die Platzhalter sicher zurückzutauschen.
 - Bilder und Dateien in Nachrichten gehen nicht, nur Text. Dokumente laufen über `/v1/documents/ask`.

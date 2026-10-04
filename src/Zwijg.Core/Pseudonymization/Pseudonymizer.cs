@@ -4,7 +4,8 @@ using System.Text.RegularExpressions;
 namespace Zwijg.Core.Pseudonymization;
 
 // Text, den jemand im Chat selbst als geheim markiert hat, mit der Bezeichnung für den Platzhalter (z.B. GEHEIM)
-public sealed record SecretTerm(string Value, string Label);
+// Type: wie der Wert zählt, z.B. Name beim Patientenfeld. WholeWord: nur ganze Wörter, "Anna" nicht in "Annahme".
+public sealed record SecretTerm(string Value, string Label, EntityType Type = EntityType.Custom, bool WholeWord = false);
 
 public sealed class TextTooLongException() : Exception(Pseudonymizer.TooLongMessage);
 
@@ -134,13 +135,26 @@ public sealed class Pseudonymizer(IEnumerable<IPiiDetector> detectors, Func<IRea
             {
                 if (result.Any(r => pos < r.End && r.Start < pos + value.Length))
                     continue;
+                if (secret.WholeWord && !IsWholeWord(text, pos, value.Length))
+                    continue;
 
                 // Der Platzhalter gehört zum Geheimnis selbst, nicht zur Schreibweise an dieser Stelle
-                result.Add(new PiiMatch(EntityType.Custom, pos, value.Length, value, secret.Label));
+                result.Add(new PiiMatch(secret.Type, pos, value.Length, value, secret.Type == EntityType.Custom ? secret.Label : null));
             }
         }
 
         return result;
+    }
+
+    // Davor und dahinter kein Buchstabe und keine Ziffer. Ein "s" dahinter ist erlaubt, "Kowalczyks Befund".
+    private static bool IsWholeWord(string text, int start, int length)
+    {
+        var end = start + length;
+        if (start > 0 && char.IsLetterOrDigit(text[start - 1]))
+            return false;
+        if (end >= text.Length || !char.IsLetterOrDigit(text[end]))
+            return true;
+        return text[end] == 's' && (end + 1 >= text.Length || !char.IsLetterOrDigit(text[end + 1]));
     }
 
     // Überlappende Treffer werden zu einem zusammengefasst, damit kein Rest wie ".03.1980" stehen bleibt.
