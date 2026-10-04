@@ -56,6 +56,16 @@ public static class AdminSettingsEndpoints
 
         admin.MapGet("/settings", (SettingsStore store, ProviderRegistry providers) => Results.Ok(View(store.Current, providers)));
 
+        // Abmelden nach Inaktivität, 0 heißt nie
+        admin.MapPut("/session", async (SessionInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
+        {
+            if (input.IdleLogoutMinutes is < 0 or > 480)
+                return Results.BadRequest(new { error = "Bitte 0 bis 480 Minuten angeben, 0 heißt nie abmelden" });
+            return await ChangeAsync(ctx, store, audit,
+                input.IdleLogoutMinutes == 0 ? "Automatisches Abmelden ausgeschaltet" : $"Automatisch abmelden nach {input.IdleLogoutMinutes} Minuten",
+                s => s.IdleLogoutMinutes = input.IdleLogoutMinutes);
+        });
+
         // Verbindungen
 
         admin.MapPost("/connections", (ConnectionInput input, HttpContext ctx, SettingsStore store, IAuditLog audit) =>
@@ -349,6 +359,7 @@ public static class AdminSettingsEndpoints
         }),
         s.LocalConnectionId,
         s.CloudConnectionId,
+        s.IdleLogoutMinutes,
         policy = new { s.Routing, s.Injection, s.StorePrompts, s.UseLocalLlmForNames, s.ExtraNames, s.ExtraPlaces, s.IgnoredWords },
         users = s.Users.Select(u => new
         {
@@ -499,3 +510,5 @@ public static class AdminSettingsEndpoints
     // Namen kommen aus Eingaben. Ohne Zeilenumbruch kann niemand eine falsche Zeile ins Log schreiben.
     private static string OneLine(string text) => text.Replace("\r", " ").Replace("\n", " ");
 }
+
+public sealed record SessionInput(int IdleLogoutMinutes);

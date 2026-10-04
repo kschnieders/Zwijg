@@ -21,6 +21,10 @@ public sealed class GatewaySettings
     public RoutingOptions Routing { get; set; } = new();
     public InjectionOptions Injection { get; set; } = new();
     public bool StorePrompts { get; set; } = true;
+
+    // Abmelden nach so vielen Minuten ohne Eingabe in der Oberfläche, 0 heißt nie.
+    // Gegen offene Sitzungen am geteilten Rechner, etwa am Empfang.
+    public int IdleLogoutMinutes { get; set; } = 30;
     public bool UseLocalLlmForNames { get; set; }
 
     // Eigene Listen der Praxis: immer ersetzen bzw. nie ersetzen

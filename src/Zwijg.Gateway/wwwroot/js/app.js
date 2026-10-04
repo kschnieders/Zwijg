@@ -612,7 +612,7 @@ async function runProtect() {
   $("protectRun").disabled = true;
   $("protectStatus").textContent = "wird geschützt ...";
   try {
-    const r = await api("POST", "/v1/protect", { text, known: protect.mapping, secrets: protect.secrets });
+    const r = await api("POST", "/v1/protect", { text, known: protect.mapping, secrets: protect.secrets, patient: $("protectPatient").value.trim() || null });
     protect.mapping = r.mapping;
     protect.protectedText = r.protected;
     $("protectOutput").innerHTML = esc(r.protected).replace(/\[[A-Z]+_\d+\]/g, m => `<mark>${m}</mark>`);
@@ -667,6 +667,7 @@ function renderProtectMap() {
 }
 
 function resetProtect() {
+  $("protectPatient").value = "";
   protect.mapping = [];
   protect.secrets = [];
   renderProtectSecrets();
@@ -1613,6 +1614,7 @@ $("docFile").addEventListener("change", () => { if ($("docFile").files[0]) setFi
 $("drop").addEventListener("drop", e => { e.preventDefault(); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
 
 function resetDocument() {
+  $("docPatient").value = "";
   doc.file = null;
   doc.check = null;
   $("docFile").value = "";
@@ -1625,9 +1627,17 @@ function resetDocument() {
 
 $("docReset").addEventListener("click", resetDocument);
 
+// Patient beim Dokument: ändert er sich nach dem Hochladen, wird neu geprüft
+let docPatientTimer = null;
+$("docPatient").addEventListener("input", () => {
+  clearTimeout(docPatientTimer);
+  docPatientTimer = setTimeout(() => { if (doc.file) checkDocument(); }, 600);
+});
+
 async function checkDocument() {
   const form = new FormData();
   form.append("file", doc.file);
+  form.append("patient", $("docPatient").value.trim());
   ["docReport", "docAsk", "docPreviewCard"].forEach(id => $(id).hidden = true);
   $("docResult").innerHTML = "";
   $("docStatus").innerHTML = `<div class="doc-busy"><span class="typing"><i></i><i></i><i></i></span><span id="docBusyText">Dokument wird geprüft...</span></div>`;
@@ -1715,6 +1725,7 @@ async function askDocument() {
   const form = new FormData();
   form.append("file", doc.file);
   form.append("question", $("docQuestion").value);
+  form.append("patient", $("docPatient").value.trim());
 
   $("docSend").disabled = true;
   $("docResult").innerHTML = '<div class="msg assistant"><span class="typing"><i></i><i></i><i></i></span></div>';
@@ -3056,8 +3067,48 @@ async function loadUsers() {
   const [settings, stats] = await Promise.all([api("GET", "/admin/settings"), api("GET", "/admin/users/stats")]);
   state.settings = settings;
   state.userStats = stats;
+  $("idleMinutes").value = settings.idleLogoutMinutes ?? 30;
   renderUsers();
 }
+
+$("idleSave").addEventListener("click", async () => {
+  try {
+    await api("PUT", "/admin/session", { idleLogoutMinutes: Number($("idleMinutes").value) || 0 });
+    toast("Gespeichert");
+    await reloadMe();
+  } catch (err) { toast(err.message, true); }
+});
+
+// Abmelden nach Inaktivität. Alle offenen Tabs zählen zusammen, sonst würde ein vergessener zweiter Tab
+// auch den abmelden, der gerade arbeitet. Gespeichert wird nur die Uhrzeit der letzten Eingabe.
+const IDLE_KEY = "zwijg.lastActivity";
+let idleLocal = Date.now(), idleWritten = 0;
+
+function markActive() {
+  idleLocal = Date.now();
+  if (idleLocal - idleWritten > 5000) {
+    idleWritten = idleLocal;
+    try { localStorage.setItem(IDLE_KEY, String(idleLocal)); } catch { }
+  }
+  if (!$("idleWarning").hidden) $("idleWarning").hidden = true;
+}
+
+function lastActive() {
+  try { return Math.max(idleLocal, Number(localStorage.getItem(IDLE_KEY)) || 0); } catch { return idleLocal; }
+}
+
+for (const ev of ["mousemove", "keydown", "click", "scroll", "touchstart"])
+  document.addEventListener(ev, markActive, { passive: true, capture: true });
+
+$("idleStay").addEventListener("click", () => { idleWritten = 0; markActive(); });
+
+setInterval(() => {
+  const minutes = state.me?.idleLogoutMinutes;
+  if (!minutes) return;
+  const idle = Date.now() - lastActive();
+  if (idle >= minutes * 60000) logout("Wegen Inaktivität abgemeldet. Bitte neu anmelden.");
+  else if (idle >= minutes * 60000 - 60000) $("idleWarning").hidden = false;
+}, 5000);
 
 function renderUsers() {
   const q = $("userSearch").value.trim().toLowerCase();

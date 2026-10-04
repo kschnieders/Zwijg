@@ -217,6 +217,11 @@
       <div class="protect-layout">
         <div class="card">
           <div class="card-title"><span class="step">1</span>Text einfügen</div>
+          <div class="patient-bar inline">
+              <svg class="ico"><use href="#i-user"/></svg>
+              <label for="protectPatient">Patient</label>
+              <input type="text" id="protectPatient" autocomplete="off" spellcheck="false" maxlength="200" placeholder="optional, z.B. Kowalczyk, Anna, 12.03.1980">
+            </div>
           <div class="prompt-wrap">
             <textarea id="protectInput" rows="7" placeholder="Zum Beispiel: Bitte formuliere eine freundliche Terminabsage für Herrn Max Mustermann, Termin am Montag um 10 Uhr."></textarea>
             <button type="button" class="hide-selection" id="protectHide" hidden title="Markierten Text verstecken (Strg+Umschalt+H)">
@@ -271,6 +276,11 @@
       <div class="doc-layout" id="docLayout">
         <div class="stack">
           <div class="card" id="docUploadCard">
+            <div class="patient-bar inline">
+              <svg class="ico"><use href="#i-user"/></svg>
+              <label for="docPatient">Patient</label>
+              <input type="text" id="docPatient" autocomplete="off" spellcheck="false" maxlength="200" placeholder="optional, z.B. Kowalczyk, Anna, 12.03.1980">
+            </div>
             <label class="drop" id="drop">
               <input type="file" id="docFile" accept=".pdf,.txt,.png,.jpg,.jpeg,.tif,.tiff,.bmp,application/pdf,text/plain,image/*" hidden>
               <svg class="ico drop-ico"><use href="#i-upload"/></svg>
@@ -676,6 +686,12 @@
         </div>
         <button class="btn primary" id="addUser"><svg class="ico"><use href="#i-plus"/></svg>Benutzer anlegen</button>
       </header>
+      <div class="card idle-card">
+        <span>Automatisch abmelden nach</span>
+        <input type="number" id="idleMinutes" min="0" max="480">
+        <span>Minuten ohne Eingabe. 0 heißt nie.</span>
+        <button class="btn ghost" id="idleSave"><svg class="ico"><use href="#i-check"/></svg>Speichern</button>
+      </div>
       <div class="card">
         <div class="toolbar">
           <label class="search"><svg class="ico"><use href="#i-search"/></svg><input type="text" id="userSearch" placeholder="Suchen..."></label>
@@ -1205,6 +1221,13 @@
     </footer>
   </form>
 </dialog>
+
+<!-- Warnung vor dem Abmelden nach Inaktivität -->
+<div class="idle-warning" id="idleWarning" hidden role="alert">
+  <strong>Du wirst gleich abgemeldet</strong>
+  <span>Seit einer Weile gab es keine Eingabe.</span>
+  <button class="btn primary" type="button" id="idleStay">Angemeldet bleiben</button>
+</div>
 
 <!-- Einführung beim ersten Anmelden -->
 <div class="tour" id="tour" hidden>

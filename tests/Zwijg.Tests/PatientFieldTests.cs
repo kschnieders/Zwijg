@@ -97,6 +97,37 @@ public class PatientFieldTests(PatientFactory factory) : IClassFixture<PatientFa
         }
     }
 
+    [Fact]
+    public async Task Auch_bei_Dokument_und_Text_schuetzen()
+    {
+        var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(Encoding.UTF8.GetBytes("Befund: Kowalczyk, geb. 12.3.80, Blutdruck erhöht."));
+        file.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+        form.Add(file, "file", "befund.txt");
+        form.Add(new StringContent(Patient), "patient");
+        var check = (await (await Client().PostAsync("/v1/documents/check", form)).Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.DoesNotContain("owalczyk", check.ToJsonString(), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("12.3.80", check.ToJsonString());
+
+        var protect = await Client().PostAsJsonAsync("/v1/protect", new { text = "Rückruf an Kowalczyk wegen Termin", patient = Patient });
+        var body = (await protect.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal("Rückruf an [NAME_1] wegen Termin", body["protected"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task Abmelden_nach_Inaktivitaet_einstellbar()
+    {
+        var admin = factory.CreateClient();
+        admin.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "admin-key");
+
+        Assert.Equal(30, (await Client().GetFromJsonAsync<JsonObject>("/v1/me"))!["idleLogoutMinutes"]!.GetValue<int>());
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/admin/session", new { idleLogoutMinutes = 1000 })).StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, (await Client().PutAsJsonAsync("/admin/session", new { idleLogoutMinutes = 0 })).StatusCode);
+
+        (await admin.PutAsJsonAsync("/admin/session", new { idleLogoutMinutes = 15 })).EnsureSuccessStatusCode();
+        Assert.Equal(15, (await Client().GetFromJsonAsync<JsonObject>("/v1/me"))!["idleLogoutMinutes"]!.GetValue<int>());
+    }
+
     private static bool Contains(byte[] haystack, byte[] needle) =>
         haystack.AsSpan().IndexOf(needle) >= 0;
 }
