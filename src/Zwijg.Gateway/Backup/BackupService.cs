@@ -227,6 +227,14 @@ public sealed partial class BackupService(
         Copy("data/settings.json", Path.Combine(DataDir, "settings.json"));
         Copy("data/.version", Path.Combine(DataDir, ".version"));
         Database("data/history.db", Path.Combine(DataDir, "history.db"));
+        // Eigenes Logo
+        var branding = Path.Combine(DataDir, "branding");
+        if (Directory.Exists(branding))
+        {
+            foreach (var file in Directory.GetFiles(branding))
+                Copy("data/branding/" + Path.GetFileName(file), file);
+        }
+
         var keys = Path.Combine(DataDir, "keys");
         if (Directory.Exists(keys))
         {

@@ -49,6 +49,7 @@
     <symbol id="i-tour" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></symbol>
     <symbol id="i-backup" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></symbol>
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></symbol>
+    <symbol id="i-brush" viewBox="0 0 24 24"><path d="M14 4l6 6-8 8H6v-6z"/><path d="M4 20h4"/></symbol>
     <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></symbol>
@@ -129,6 +130,7 @@
       <button data-view="users" class="admin-only"><svg class="ico"><use href="#i-users"/></svg>Benutzer</button>
       <button data-view="notices" class="admin-only"><svg class="ico"><use href="#i-bell"/></svg>Benachrichtigungen<span class="nav-count" id="noticeCount" hidden></span></button>
       <button data-view="audit" class="admin-only"><svg class="ico"><use href="#i-list"/></svg>Protokoll</button>
+      <button data-view="branding" class="admin-only"><svg class="ico"><use href="#i-brush"/></svg>Darstellung</button>
       <button data-view="backup" class="admin-only"><svg class="ico"><use href="#i-backup"/></svg>Sicherung<span class="nav-dot" id="backupDot" hidden title="Bitte prüfen"></span></button>
     </nav>
 
@@ -718,6 +720,56 @@
         <button class="btn primary" id="addNotice"><svg class="ico"><use href="#i-plus"/></svg>Neue Benachrichtigung</button>
       </header>
       <div class="notice-list" id="noticeList"></div>
+    </section>
+
+    <!-- Darstellung -->
+    <section class="view" id="view-branding" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Darstellung</h1>
+          <p class="muted">Praxisname, Logo und Farben. Gilt für alle, auch auf der Anmeldeseite. Änderungen sind sofort als Vorschau zu sehen.</p>
+        </div>
+      </header>
+      <div class="branding-layout">
+        <div class="card">
+          <label class="field">
+            <span>Praxisname</span>
+            <input type="text" id="brName" maxlength="60" placeholder="z.B. Hausarztpraxis Dr. Sommer">
+            <small class="muted">Steht oben links und bei der Anmeldung. Darunter bleibt "mit Zwijg" stehen.</small>
+          </label>
+
+          <div class="field-label" style="margin-top: 14px">Logo</div>
+          <div class="branding-logo">
+            <div class="branding-logo-box" id="brLogoBox"></div>
+            <label class="btn ghost"><svg class="ico"><use href="#i-upload"/></svg>Hochladen<input type="file" id="brLogoFile" accept="image/png,image/jpeg,image/webp" hidden></label>
+            <button class="btn ghost" type="button" id="brLogoRemove" hidden>Entfernen</button>
+          </div>
+          <small class="muted">PNG, JPG oder WebP, höchstens 512 KB, am besten quadratisch. SVG geht aus Sicherheitsgründen nicht.</small>
+
+          <label class="switch" style="margin-top: 16px"><input type="checkbox" id="brAccentOn"><span class="track"></span><span>Eigene Akzentfarbe</span></label>
+          <div class="branding-colors"><input type="color" id="brAccent" value="#1f6f5c"></div>
+          <p class="muted small" id="brContrast" hidden>Diese Farbe ist sehr hell. Links und Markierungen sind damit schwer zu lesen.</p>
+
+          <label class="switch" style="margin-top: 16px"><input type="checkbox" id="brGradientOn"><span class="track"></span><span>Farbverlauf auf der Anmeldeseite</span></label>
+          <div class="branding-colors">
+            <input type="color" id="brFrom" value="#e3f0eb">
+            <input type="color" id="brTo" value="#1f6f5c">
+            <input type="range" id="brAngle" min="0" max="360" step="15" value="135">
+            <span class="muted small" id="brAngleValue">135°</span>
+          </div>
+
+          <div class="actions">
+            <button class="btn ghost" type="button" id="brReset">Standard</button>
+            <button class="btn primary" type="button" id="brSave"><svg class="ico"><use href="#i-check"/></svg>Speichern</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Vorschau Anmeldung</div>
+          <div class="branding-preview" id="brPreview">
+            <div class="branding-preview-card"><div class="brand-preview-line"></div><div class="brand-preview-line short"></div><div class="brand-preview-btn"></div></div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- Sicherung -->

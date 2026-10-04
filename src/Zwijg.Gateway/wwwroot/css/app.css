@@ -1202,3 +1202,21 @@ mark.check { background: var(--warn-soft); color: inherit; border-radius: 3px; p
 .idle-warning { position: fixed; right: 20px; bottom: 20px; z-index: 900; display: flex; flex-direction: column; gap: 6px; max-width: 320px; padding: 16px; border-radius: 14px; background: var(--panel); border: 1px solid var(--warn-line); box-shadow: 0 16px 40px rgba(0, 0, 0, .25); }
 .idle-warning span { color: var(--text-2); font-size: 14px; }
 .idle-warning .btn { align-self: flex-start; margin-top: 6px; }
+
+/* Darstellung */
+.logo.has-image { background: transparent; box-shadow: none; overflow: hidden; }
+.logo.has-image img { width: 100%; height: 100%; object-fit: contain; }
+.branding-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+@media (max-width: 960px) { .branding-layout { grid-template-columns: 1fr; } }
+.branding-logo { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.branding-logo-box { width: 56px; height: 56px; border-radius: 14px; border: 1px dashed var(--line-strong); display: grid; place-items: center; overflow: hidden; background: var(--panel-2); }
+.branding-logo-box img { width: 100%; height: 100%; object-fit: contain; }
+.branding-colors { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.branding-colors input[type=color] { width: 46px; height: 34px; padding: 2px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); }
+.branding-colors input[type=range] { flex: 1; max-width: 220px; }
+.branding-preview { height: 220px; border-radius: 14px; display: grid; place-items: center; background: radial-gradient(circle at 20% 0%, var(--accent-soft), transparent 45%), var(--bg); border: 1px solid var(--line); }
+.branding-preview-card { width: 60%; padding: 18px; border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); display: grid; gap: 8px; }
+.brand-preview-line { height: 10px; border-radius: 5px; background: var(--line-strong); }
+.brand-preview-line.short { width: 60%; }
+.brand-preview-btn { height: 22px; border-radius: 8px; background: var(--accent); margin-top: 6px; }
+input[type=range] { accent-color: var(--accent); }
