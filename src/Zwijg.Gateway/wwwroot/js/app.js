@@ -396,6 +396,8 @@ function applyTheme() {
   const choice = themeChoice();
   const dark = choice === "dark" || (choice === "system" && systemDark.matches);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
+  // Eigene Farben hängen vom Modus ab
+  if (typeof branding !== "undefined") applyBranding();
 }
 
 function setTheme(choice) {
@@ -955,6 +957,162 @@ function backupStatusRow() {
   return `<div class="status-row clickable" id="backupRow" tabindex="0" title="Sicherung"><span class="label">Sicherung</span><span class="version-status">${chip(text, kind, ico)}</span></div>`;
 }
 
+// Eigenes Aussehen: Praxisname, Logo, Akzentfarbe und Hintergrund der Anmeldung. Gilt schon auf der Anmeldeseite.
+// Die Werte kommen vom Server und sind dort geprüft (Farben nur als #RRGGBB).
+var branding = null; // var, weil applyTheme schon vorher laufen kann
+
+async function loadBranding() {
+  branding = await fetch("/branding").then(r => r.ok ? r.json() : null).catch(() => null);
+  applyBranding();
+}
+
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [n >> 16 & 255, n >> 8 & 255, n & 255];
+}
+
+function mixColor(a, b, t) {
+  const x = hexToRgb(a), y = hexToRgb(b);
+  return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join("");
+}
+
+function luminance(hex) {
+  const [r, g, b] = hexToRgb(hex).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a, b) {
+  const [l1, l2] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (l1 + 0.05) / (l2 + 0.05);
+}
+
+// Aus einer Farbe die Varianten für hell und dunkel ableiten, damit beides gut lesbar bleibt
+function applyBranding(b = branding) {
+  const root = document.documentElement.style;
+  const dark = document.documentElement.dataset.theme === "dark";
+  const props = ["--accent", "--accent-2", "--accent-soft", "--accent-ink"];
+
+  if (b?.accent) {
+    const base = dark ? mixColor(b.accent, "#ffffff", 0.35) : b.accent;
+    root.setProperty("--accent", base);
+    root.setProperty("--accent-2", mixColor(base, dark ? "#ffffff" : "#000000", 0.15));
+    root.setProperty("--accent-soft", dark ? mixColor(base, "#151615", 0.78) : mixColor(base, "#ffffff", 0.88));
+    root.setProperty("--accent-ink", luminance(base) > 0.45 ? "#111111" : "#ffffff");
+  } else {
+    props.forEach(p => root.removeProperty(p));
+  }
+
+  $("login").style.background = b?.gradient ? `linear-gradient(${b.gradient.angle}deg, ${b.gradient.from}, ${b.gradient.to})` : "";
+
+  for (const brand of document.querySelectorAll(".sidebar .brand, .login .brand")) {
+    const logo = brand.querySelector(".logo"), name = brand.querySelector(".brand-name"), sub = brand.querySelector(".brand-sub");
+    logo.dataset.original ??= logo.innerHTML;
+    name.dataset.original ??= name.textContent;
+    sub.dataset.original ??= sub.textContent;
+
+    if (b?.logo) {
+      logo.innerHTML = "";
+      const img = document.createElement("img");
+      img.src = b.logo;
+      img.alt = "";
+      logo.appendChild(img);
+    } else {
+      logo.innerHTML = logo.dataset.original;
+    }
+    logo.classList.toggle("has-image", !!b?.logo);
+
+    // Mit eigenem Namen bleibt "mit Zwijg" stehen, so verlangt es die Namensnennung
+    name.textContent = b?.name || name.dataset.original;
+    sub.textContent = b?.name ? "mit Zwijg" : sub.dataset.original;
+  }
+}
+
+// Seite Darstellung für Admins, Änderungen wirken sofort als Vorschau
+function brandingForm() {
+  return {
+    name: $("brName").value.trim() || null,
+    accent: $("brAccentOn").checked ? $("brAccent").value : null,
+    gradient: $("brGradientOn").checked ? { from: $("brFrom").value, to: $("brTo").value, angle: Number($("brAngle").value) } : null,
+    logo: branding?.logo || null,
+  };
+}
+
+function previewBranding() {
+  const f = brandingForm();
+  $("brAccent").disabled = !$("brAccentOn").checked;
+  for (const id of ["brFrom", "brTo", "brAngle"]) $(id).disabled = !$("brGradientOn").checked;
+  $("brAngleValue").textContent = $("brAngle").value + "°";
+  $("brPreview").style.background = f.gradient ? `linear-gradient(${f.gradient.angle}deg, ${f.gradient.from}, ${f.gradient.to})` : "";
+  $("brContrast").hidden = !(f.accent && contrast(f.accent, "#ffffff") < 3);
+  $("brLogoBox").innerHTML = f.logo ? `<img src="${esc(f.logo)}" alt="">` : '<span class="muted small">Kein Logo</span>';
+  $("brLogoRemove").hidden = !f.logo;
+  applyBranding(f);
+}
+
+async function loadBrandingAdmin() {
+  await loadBranding();
+  const b = branding || {};
+  $("brName").value = b.name || "";
+  $("brAccentOn").checked = !!b.accent;
+  $("brAccent").value = b.accent || "#1f6f5c";
+  $("brGradientOn").checked = !!b.gradient;
+  $("brFrom").value = b.gradient?.from || "#e3f0eb";
+  $("brTo").value = b.gradient?.to || "#1f6f5c";
+  $("brAngle").value = b.gradient?.angle ?? 135;
+  previewBranding();
+}
+
+async function saveBranding() {
+  const f = brandingForm();
+  try {
+    await api("PUT", "/admin/branding", {
+      practiceName: f.name,
+      accent: f.accent,
+      gradientFrom: f.gradient?.from || null,
+      gradientTo: f.gradient?.to || null,
+      gradientAngle: f.gradient?.angle ?? 135,
+    });
+    toast("Darstellung gespeichert");
+    await loadBrandingAdmin();
+  } catch (err) { toast(err.message, true); }
+}
+
+for (const id of ["brName", "brAccentOn", "brAccent", "brGradientOn", "brFrom", "brTo", "brAngle"])
+  $(id).addEventListener("input", previewBranding);
+$("brSave").addEventListener("click", saveBranding);
+$("brReset").addEventListener("click", () => {
+  $("brName").value = "";
+  $("brAccentOn").checked = false;
+  $("brGradientOn").checked = false;
+  previewBranding();
+  toast("Zurückgesetzt, mit Speichern übernehmen");
+});
+
+$("brLogoFile").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  const form = new FormData();
+  form.append("file", file);
+  try {
+    await api("POST", "/admin/branding/logo", form);
+    toast("Logo hochgeladen");
+    await loadBranding();
+    previewBranding();
+  } catch (err) { toast(err.message, true); }
+});
+
+$("brLogoRemove").addEventListener("click", async () => {
+  try {
+    await api("DELETE", "/admin/branding/logo");
+    await loadBranding();
+    previewBranding();
+  } catch (err) { toast(err.message, true); }
+});
+
+// Verlässt man die Seite ohne Speichern, gilt wieder das gespeicherte Aussehen
+document.querySelectorAll(".nav button").forEach(b => b.addEventListener("click", () => { if (b.dataset.view !== "branding") applyBranding(); }));
+
 // Über Zwijg: Ersteller, Quellcode und Lizenzen. Geht auch ohne Anmeldung.
 async function openAbout() {
   $("aboutDialog").showModal();
@@ -1126,9 +1284,11 @@ function show(view) {
   if (!document.getElementById("view-" + view) || (!state.me.admin && document.querySelector(`.nav button[data-view="${view}"]`)?.classList.contains("admin-only"))) view = "chat";
   history.replaceState(null, "", "#" + view);
   document.querySelectorAll(".nav button").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+  // Bei vielen Einträgen ist das Menü scrollbar, der aktive soll sichtbar sein
+  document.querySelector(".nav button.active")?.scrollIntoView({ block: "nearest" });
   document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "view-" + view);
 
-  const loaders = { dashboard: loadDashboard, connections: loadConnections, rules: loadRules, users: loadUsers, notices: loadNotices, audit: loadAudit, backup: loadBackup };
+  const loaders = { dashboard: loadDashboard, connections: loadConnections, rules: loadRules, users: loadUsers, notices: loadNotices, audit: loadAudit, backup: loadBackup, branding: loadBrandingAdmin };
   // Nur eigene Einträge aufrufen, nie etwas wie "constructor" aus der Adresszeile
   if (Object.hasOwn(loaders, view))
     loaders[view]().catch(err => toast(err.message, true));
@@ -3879,6 +4039,7 @@ $("auditCsv").addEventListener("click", async () => {
 
 // Start
 
+loadBranding();
 resume();
 
 // Übersicht mit dem Protokoll verbinden

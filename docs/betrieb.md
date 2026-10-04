@@ -136,6 +136,10 @@ Wichtig:
 - Das Zertifikat später nicht gegen ein anderes tauschen. Zwijg startet dann zwar und legt einen neuen Schlüssel an, aber ein Wechsel wirkt wie ein Verlust: Alle Anmeldungen enden, API Schlüssel müssen neu eingetragen werden, gespeicherte Unterhaltungen sind nicht mehr lesbar, und die Echtheit älterer Protokolleinträge lässt sich nicht mehr prüfen. Deshalb eine lange Laufzeit wählen (`-days 3650` oben) und die `.pfx` Datei dauerhaft aufbewahren.
 - Beim ersten Start mit Zertifikat legt Zwijg sofort einen neuen, verschlüsselten Schlüssel an. Alles, was ab dann verschlüsselt wird, ist geschützt. Die alten Schlüssel bleiben, wie sie sind, damit ältere Daten lesbar bleiben. Gespeicherte API Schlüssel und ältere Unterhaltungen sind deshalb weiter mit einem ungeschützten Schlüssel verschlüsselt. API Schlüssel der Anbieter einmal neu eintragen, dann sind auch sie geschützt. Wer von Anfang an alles geschützt haben will, richtet das Zertifikat vor dem ersten Start ein.
 
+## Darstellung
+
+Unter **Darstellung** legen Admins Praxisname, Logo (PNG, JPG oder WebP), eine eigene Akzentfarbe und einen Farbverlauf für die Anmeldeseite fest. Das Logo liegt in `data/branding` und ist in der Sicherung enthalten. Der Hinweis "mit Zwijg" und **Über Zwijg** bleiben, so verlangt es die Namensnennung in der Lizenz.
+
 ## Updates
 
 Gibt es eine neue Version, sehen Admins nach der Anmeldung oben einen Hinweis. Schließt sie Sicherheitslücken, ist er rot und heißt **Sicherheitsupdate**. Ein Klick zeigt, was sich seit der installierten Version geändert hat, und die passenden Befehle. Was die installierte Version Neues hat, steht unter **Über Zwijg** und in der Datei `CHANGELOG.md`. Kurz gefasst:

@@ -48,6 +48,9 @@ public sealed class GatewaySettings
 
     // Tägliche Sicherung des Datenordners
     public BackupSettings Backup { get; set; } = new();
+
+    // Eigenes Aussehen: Praxisname, Logo, Farben
+    public BrandingSettings Branding { get; set; } = new();
 }
 
 public sealed class Connection
@@ -239,6 +242,21 @@ public sealed class HistoryOptions
 
     // Angepinnte bleiben, bis man sie löst. Deshalb eine eigene Obergrenze.
     public int MaxPinned { get; set; } = 10;
+}
+
+public sealed class BrandingSettings
+{
+    public string? PracticeName { get; set; }
+
+    // Farben als #RRGGBB, leer heißt Standard
+    public string? Accent { get; set; }
+    public string? GradientFrom { get; set; }
+    public string? GradientTo { get; set; }
+    public int GradientAngle { get; set; } = 135;
+
+    // Datei im Ordner data/branding, die Version hängt an der Adresse, damit Browser ein neues Logo laden
+    public string? LogoFile { get; set; }
+    public string LogoVersion { get; set; } = "1";
 }
 
 public sealed class BackupSettings

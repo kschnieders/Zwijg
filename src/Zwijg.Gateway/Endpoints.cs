@@ -352,6 +352,7 @@ public static class Endpoints
         app.MapOcr();
         app.MapDictation();
         Zwijg.Gateway.Backup.BackupEndpoints.MapBackup(app);
+        app.MapBranding();
         app.MapAdminRules();
         app.MapHistory();
         app.MapAuth();
