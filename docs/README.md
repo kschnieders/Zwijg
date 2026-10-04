@@ -11,3 +11,4 @@ Kurze Anleitungen für den Alltag mit Zwijg. Jede passt auf eine Seite.
 7. [Schutz anpassen](schutz-anpassen.md): eigene Regeln, Namens- und Ortslisten
 8. [Andere Programme anbinden](programme-anbinden.md): Zwijg als OpenAI kompatible Schnittstelle
 9. [Betrieb in der Praxis](betrieb.md): Server, HTTPS, Sicherung, Updates
+10. [Infoblatt Datenschutz](datenschutz.md): für Datenschutzbeauftragte, welche Daten wo liegen und wie sie geschützt sind
