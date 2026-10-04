@@ -2,6 +2,16 @@
 
 Im Chat schreibt man ganz normal, auch mit Namen, Geburtsdaten und Versichertennummern. Zwijg ersetzt sie vor dem Versand und setzt sie in der Antwort wieder ein.
 
+## Patient eintragen
+
+Geht es um einen bestimmten Patienten, oben im Chat bei **Patient** einmal Name und Geburtsdatum eintragen, zum Beispiel `Kowalczyk, Anna, 12.03.1980`. Zwijg versteckt sie dann in der ganzen Unterhaltung:
+
+- auch den Nachnamen allein im Satz, ohne Herr oder Frau davor, etwa "Bitte Kowalczyk zurückrufen"
+- das Geburtsdatum in jeder üblichen Schreibweise, etwa 12.3.80 oder 12. März 1980
+- nur ganze Wörter, "Anna" also nicht in "Annahme"
+
+Das Feld steht nur im Speicher der Seite und verschlüsselt in der gespeicherten Unterhaltung. Der Browser merkt es sich nicht. **Neue Unterhaltung** leert es.
+
 ## Die Vorschau rechts lesen
 
 Unter **Das sieht die KI** steht beim Tippen genau der Text, der rausgeht. Ersetzte Stellen sind gelb markiert, zum Beispiel `[NAME_1]`.

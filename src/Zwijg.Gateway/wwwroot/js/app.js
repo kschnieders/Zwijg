@@ -56,7 +56,7 @@ const NL = String.fromCharCode(10);
 const state = {
   key: "", me: null, meJson: "", settings: null, history: [], editing: null, preset: null,
   previewTimer: null, userFilter: "all", userStats: {}, editingUser: null, editingNotice: null, noticeLevel: "Info",
-  conversationId: null, convs: [], convTotal: 0, convShowAll: false, secrets: []
+  conversationId: null, convs: [], convTotal: 0, convShowAll: false, secrets: [], patient: ""
 };
 
 // Hilfsfunktionen
@@ -708,6 +708,8 @@ function tourSteps() {
       text: "Zwijg schützt Patientendaten, bevor eine Frage an eine KI geht. In einer Minute zeigen wir dir die wichtigsten Stellen." },
     { el: "#prompt", view: "chat", title: "Ganz normal schreiben",
       text: "Hier stellst du Fragen wie in jedem Chat, auch mit Namen, Geburtsdaten oder Versichertennummern. Zwijg ersetzt sie vor dem Versand und setzt sie in der Antwort wieder ein." },
+    { el: ".patient-bar", view: "chat", title: "Patient eintragen",
+      text: "Geht es um einen bestimmten Patienten, hier einmal Name und Geburtsdatum eintragen. Zwijg versteckt sie dann in der ganzen Unterhaltung, auch wenn nur der Nachname im Satz steht." },
     me.showPreview && { el: "#previewCard", view: "chat", title: "Das sieht die KI",
       text: "Hier steht beim Tippen genau der Text, der rausgeht. Ersetzte Stellen sind gelb. Erkennt Zwijg etwas nicht, im Eingabefeld markieren und auf Verstecken klicken." },
     me.dictation && { el: "#dictate", view: "chat", title: "Diktieren",
@@ -1195,7 +1197,7 @@ async function preview() {
   }
 
   try {
-    const r = await api("POST", "/v1/check", { text, secrets: state.secrets });
+    const r = await api("POST", "/v1/check", { text, secrets: state.secrets, patient: state.patient || null });
     if (seq !== previewSeq) return;
     $("preview").innerHTML = esc(r.pseudonymized).replace(/\[[A-Z]+_\d+\]/g, m => `<mark>${m}</mark>`);
 
@@ -1484,6 +1486,7 @@ async function sendContent(text, display) {
   try {
     const body = { model: "auto", messages: state.history };
     body.zwijg = { secrets: state.secrets };
+    if (state.patient) body.zwijg.patient = state.patient;
     if (historyEnabled()) body.zwijg.conversation = state.conversationId || "new";
     const res = await api("POST", "/v1/chat/completions", body, { raw: true, headers: routeHeaders() });
     const data = await res.json().catch(() => ({}));
@@ -1529,11 +1532,34 @@ async function sendContent(text, display) {
 
 $("send").addEventListener("click", send);
 
+// Patient dieser Unterhaltung: Name und Geburtsdatum werden überall versteckt, auch ohne "Herr" oder "Frau" davor.
+// Steht nur im Speicher der Seite und verschlüsselt in der gespeicherten Unterhaltung, nie im Browser Speicher.
+function setPatient(value) {
+  state.patient = value.trim();
+  if ($("patient").value !== value) $("patient").value = value;
+  $("patientHint").hidden = !state.patient;
+  $("patientClear").hidden = !state.patient;
+}
+
+$("patient").addEventListener("input", () => {
+  setPatient($("patient").value);
+  preview();
+});
+$("patient").addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); $("prompt").focus(); }
+});
+$("patientClear").addEventListener("click", () => {
+  setPatient("");
+  preview();
+  $("patient").focus();
+});
+
 function newConversation() {
   state.history = [];
   state.conversationId = null;
   state.secrets = [];
   renderSecrets();
+  setPatient("");
   emptyChat();
   renderConversations();
   $("prompt").value = "";
@@ -3911,6 +3937,7 @@ async function openConversation(id) {
     state.conversationId = c.id;
     state.secrets = c.secrets || [];
     renderSecrets();
+    setPatient(c.patient || "");
     state.history = c.messages.map(m => ({ role: m.role, content: m.content }));
     show("chat");
     $("chat").innerHTML = "";

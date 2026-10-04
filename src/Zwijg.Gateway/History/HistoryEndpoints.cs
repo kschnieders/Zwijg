@@ -27,7 +27,7 @@ public static partial class HistoryEndpoints
 
         mine.MapGet("/{id}", async (string id, HttpContext ctx, ConversationStore store, CancellationToken ct) =>
             await store.GetAsync(ApiKeyMiddleware.GetUser(ctx).Id, id, ct) is { } c
-                ? Results.Ok(new { c.Info.Id, c.Info.Title, c.Info.Pinned, c.Info.Updated, c.Messages, c.Secrets })
+                ? Results.Ok(new { c.Info.Id, c.Info.Title, c.Info.Pinned, c.Info.Updated, c.Messages, c.Secrets, c.Patient })
                 : Results.NotFound(new { error = "Unterhaltung nicht gefunden" }));
 
         mine.MapPut("/{id}", async (string id, ConversationUpdate input, HttpContext ctx, ConversationStore store, CancellationToken ct) =>
@@ -97,12 +97,22 @@ public static partial class HistoryEndpoints
         return (z.Save, z.Id);
     }
 
-    // Alles unter "zwijg" gehört nur zum Gateway und darf nie mit an das Modell
-    public static (bool Save, string? Id, List<SecretTerm> Secrets) TakeZwijg(JsonObject request)
+    // Alles unter "zwijg" gehört nur zum Gateway und darf nie mit an das Modell.
+    // Secrets: selbst markiert. Patient: Inhalt des Patientenfelds, daraus werden weitere versteckte Begriffe.
+    public static (bool Save, string? Id, List<SecretTerm> Secrets, string? Patient) TakeZwijg(JsonObject request)
     {
         var secrets = ReadSecrets(request["zwijg"]?["secrets"]);
+        var patient = ReadPatient(request["zwijg"]?["patient"]);
         var z = TakeConversationOnly(request);
-        return (z.Save, z.Id, secrets);
+        return (z.Save, z.Id, secrets, patient);
+    }
+
+    public static string? ReadPatient(JsonNode? node)
+    {
+        var text = (node as JsonValue)?.TryGetValue<string>(out var s) == true ? s.Trim() : null;
+        if (string.IsNullOrEmpty(text))
+            return null;
+        return text.Length > PatientTerms.MaxLength ? text[..PatientTerms.MaxLength] : text;
     }
 
     // Selbst markierte Geheimnisse, z.B. [{ "value": "Projekt Nordlicht", "label": "GEHEIM" }]
