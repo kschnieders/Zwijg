@@ -114,9 +114,11 @@ public static class Endpoints
             if (!ctx.Request.HasFormContentType)
                 return Results.Json(new { error = "Bitte als multipart/form-data mit file senden" }, statusCode: 400);
 
-            var file = (await ctx.Request.ReadFormAsync(ct)).Files["file"];
+            var checkForm = await ctx.Request.ReadFormAsync(ct);
+            var file = checkForm.Files["file"];
             if (file == null)
                 return Results.Json(new { error = "Keine Datei erhalten" }, statusCode: 400);
+            var patientTerms = PatientTerms.Expand(HistoryEndpoints.ReadPatient(JsonValue.Create(checkForm["patient"].ToString())));
 
             var doc = await ReadDocumentAsync(file, settings.Current.Ocr, cache, ct);
             if (doc.Error != null)
@@ -128,7 +130,7 @@ public static class Endpoints
             var s = settings.Current;
             var (clean, invisible) = TextSanitizer.Clean(doc.Text);
             var map = new PseudonymMap();
-            var pseudo = await pseudonymizer.PseudonymizeAsync(clean, map, ct);
+            var pseudo = await pseudonymizer.PseudonymizeAsync(clean, map, ct, patientTerms);
 
             var injection = detector.Scan(doc.Text).Combine(doc.HiddenFindings).Combine(CheckDocumentTags(doc.Text));
             var injectionBlocks = injection.Score >= s.Injection.DocumentThreshold && s.Injection.Action == InjectionAction.Block;
@@ -217,8 +219,10 @@ public static class Endpoints
             if (!string.IsNullOrWhiteSpace(model))
                 request["model"] = model;
 
+            var patient = HistoryEndpoints.ReadPatient(JsonValue.Create(form["patient"].ToString()));
             var outcome = await pipeline.RunAsync(user, request, "document", hasDocument: true,
-                extraFindings: extra, requestedRoute: ReadRouteHeader(ctx), forProgram: !FromWebUi(ctx), ct: ct);
+                extraFindings: extra, requestedRoute: ReadRouteHeader(ctx), secrets: PatientTerms.Expand(patient),
+                forProgram: !FromWebUi(ctx), ct: ct);
 
             if (outcome.StatusCode != 200)
                 return ToResult(ctx, outcome);
@@ -290,6 +294,7 @@ public static class Endpoints
                 hasPassword = record.PasswordHash != null,
                 mustChangePassword = record.MustChangePassword,
                 tourSeen = record.TourSeen,
+                idleLogoutMinutes = settings.Current.IdleLogoutMinutes,
                 // Nur Admins: ob die Sicherung läuft, für den Hinweis nach der Anmeldung
                 backup = user.IsAdmin ? new { state = backup.State, backup.Status.LastSuccess, backup.Status.LastError } : null,
                 viaSession = user.ViaSession,

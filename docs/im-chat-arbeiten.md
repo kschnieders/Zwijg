@@ -10,7 +10,7 @@ Geht es um einen bestimmten Patienten, oben im Chat bei **Patient** einmal Name 
 - das Geburtsdatum in jeder üblichen Schreibweise, etwa 12.3.80 oder 12. März 1980
 - nur ganze Wörter, "Anna" also nicht in "Annahme"
 
-Das Feld steht nur im Speicher der Seite und verschlüsselt in der gespeicherten Unterhaltung. Der Browser merkt es sich nicht. **Neue Unterhaltung** leert es.
+Dasselbe Feld gibt es bei **Dokument** (vor dem Hochladen eintragen) und bei **Text schützen**. Das Feld steht nur im Speicher der Seite und verschlüsselt in der gespeicherten Unterhaltung. Der Browser merkt es sich nicht. **Neue Unterhaltung** leert es.
 
 ## Die Vorschau rechts lesen
 

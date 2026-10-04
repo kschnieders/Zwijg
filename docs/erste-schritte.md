@@ -25,6 +25,8 @@ Steht stattdessen **Port 5000 ist schon belegt** da, läuft Zwijg schon oder ein
 
 Beim ersten Anmelden zeigt eine kurze Einführung die wichtigsten Stellen. Mit **Überspringen** oder Esc geht es direkt los. Wieder ansehen geht unten links über das Konto, **Einführung ansehen**. Jeder neue Benutzer sieht sie einmal.
 
+Nach 30 Minuten ohne Eingabe meldet Zwijg automatisch ab, eine Minute vorher kommt ein Hinweis. Admins ändern die Zeit unter **Benutzer**, 0 heißt nie.
+
 ## Eigenes Passwort festlegen
 
 1. Unten links auf den eigenen Namen klicken

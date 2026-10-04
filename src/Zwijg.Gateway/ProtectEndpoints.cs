@@ -10,7 +10,7 @@ using Zwijg.Gateway.Settings;
 namespace Zwijg.Gateway;
 
 // Known: Zuordnung aus früheren Runden, damit derselbe Name denselben Platzhalter behält
-public sealed record ProtectRequest(string? Text, JsonArray? Secrets = null, List<ProtectEntry>? Known = null);
+public sealed record ProtectRequest(string? Text, JsonArray? Secrets = null, List<ProtectEntry>? Known = null, JsonNode? Patient = null);
 
 public sealed record ProtectEntry(string Placeholder, string Value);
 
@@ -41,7 +41,8 @@ public static class ProtectEndpoints
             string pseudo;
             try
             {
-                pseudo = await pseudonymizer.PseudonymizeAsync(text, map, ct, HistoryEndpoints.ReadSecrets(req.Secrets));
+                pseudo = await pseudonymizer.PseudonymizeAsync(text, map, ct,
+                    [.. HistoryEndpoints.ReadSecrets(req.Secrets), .. PatientTerms.Expand(HistoryEndpoints.ReadPatient(req.Patient))]);
             }
             catch (RegexMatchTimeoutException)
             {
