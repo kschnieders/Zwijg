@@ -49,7 +49,7 @@ Für die Aufnahme lieferte ein Demo Modell eine feste Antwort. Erkennung, Platzh
 
 ## Anleitungen
 
-Kurze Anleitungen für den Alltag stehen unter [docs](docs/README.md): erste Schritte, lokale KI einbinden, Cloud Anbieter, im Chat arbeiten, Texterkennung für Scans, Diktieren, Schutz anpassen, andere Programme anbinden und Betrieb in der Praxis.
+Kurze Anleitungen für den Alltag stehen unter [docs](docs/README.md): erste Schritte, lokale KI einbinden, Cloud Anbieter, im Chat arbeiten, Texterkennung für Scans, Diktieren, Schutz anpassen, andere Programme anbinden, Betrieb in der Praxis und ein Infoblatt für den Datenschutzbeauftragten.
 
 ## Herunterladen
 
