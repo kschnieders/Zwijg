@@ -1,0 +1,26 @@
+name: Idee oder Wunsch
+description: Neue Funktion oder Verbesserung vorschlagen
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Danke für die Idee. **Bitte keine echten Patientendaten**, nur ausgedachte Beispiele wie "Max Mustermann".
+  - type: textarea
+    id: problem
+    attributes:
+      label: Worum geht es?
+      description: Welche Aufgabe in der Praxis ist heute umständlich oder geht gar nicht?
+    validations:
+      required: true
+  - type: textarea
+    id: vorschlag
+    attributes:
+      label: Vorschlag
+      description: Wie könnte Zwijg dabei helfen?
+    validations:
+      required: true
+  - type: textarea
+    id: sonst
+    attributes:
+      label: Sonst noch etwas
+      description: Andere Lösungen, die du schon probiert hast, oder Beispiele aus anderen Programmen

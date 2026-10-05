@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Sicherheitslücke melden
+    url: https://github.com/kschnieders/zwijg/security/advisories/new
+    about: Bitte vertraulich melden und nicht als öffentliches Issue. Details in SECURITY.md.
+  - name: Anleitungen
+    url: https://github.com/kschnieders/zwijg/tree/main/docs
+    about: Einrichtung, Betrieb und Fragen zum Schutz der Daten
