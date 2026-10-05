@@ -1,0 +1,63 @@
+name: Fehler melden
+description: Etwas funktioniert nicht wie erwartet
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke für die Meldung. **Bitte keine echten Patientendaten**, auch nicht in Logs oder Screenshots. Nur ausgedachte Beispiele wie "Max Mustermann".
+        Sicherheitslücken bitte [vertraulich melden](https://github.com/kschnieders/zwijg/security/advisories/new) und nicht hier.
+  - type: textarea
+    id: was
+    attributes:
+      label: Was ist passiert?
+      description: Und was hättest du stattdessen erwartet?
+    validations:
+      required: true
+  - type: textarea
+    id: schritte
+    attributes:
+      label: Schritte zum Nachstellen
+      placeholder: |
+        1. Chat öffnen
+        2. Text "Max Mustermann, geb. 01.02.1960 ..." eingeben
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Steht unten links im Konto unter **Über Zwijg**
+      placeholder: 0.3.0
+    validations:
+      required: true
+  - type: dropdown
+    id: betrieb
+    attributes:
+      label: Betriebsart
+      options:
+        - Windows
+        - Linux
+        - Docker
+        - Selbst gebaut
+    validations:
+      required: true
+  - type: input
+    id: modell
+    attributes:
+      label: Modell oder Anbieter
+      description: Falls es um Antworten der KI geht, zum Beispiel Ollama mit llama3.1 oder Claude
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Relevante Zeilen aus der Konsole. Vorher auf Namen und Schlüssel prüfen.
+      render: text
+  - type: checkboxes
+    id: daten
+    attributes:
+      label: Datenschutz
+      options:
+        - label: Die Meldung enthält keine echten Patientendaten und keine Zugangsschlüssel
+          required: true
