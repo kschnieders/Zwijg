@@ -1063,7 +1063,8 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .update-dialog .doc-verdict span { color: var(--text-2); font-size: 14px; }
 .update-dialog a { color: var(--accent); text-decoration: none; }
 .update-dialog a:hover { text-decoration: underline; }
-.dialog.about-dialog { width: min(560px, calc(100vw - 32px)); }
+/* Über Zwijg und Version gleich breit, die Änderungen lesen sich so besser */
+.dialog.about-dialog, .dialog.update-dialog { width: min(680px, calc(100vw - 32px)); }
 .about-profiles { display: inline-flex; gap: 12px; margin-left: 10px; font-weight: 500; font-size: 13.5px; }
 
 /* Selbst markierte Geheimnisse */
@@ -1137,7 +1138,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .upd-release + .upd-release { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .upd-release h4 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 14px; color: var(--text); }
 .notes-md { font-size: 13px; color: var(--text-2); }
-#aboutNew { max-height: 220px; overflow-y: auto; margin-top: 8px; }
+#aboutNew { max-height: 320px; overflow-y: auto; margin-top: 8px; }
 .notes-md h5 { margin: 10px 0 4px; font-size: 13px; color: var(--text); }
 .notes-md h5:first-child { margin-top: 0; }
 .notes-md ul { margin: 0; padding-left: 18px; }
@@ -1230,3 +1231,9 @@ input[type=range] { accent-color: var(--accent); }
 .drop.small-drop { padding: 22px 16px; }
 .files-password { grid-column: 1 / -1; }
 .files-password input { font-family: ui-monospace, Consolas, monospace; letter-spacing: .02em; }
+
+/* Dateien verschlüsseln, Einstellungen */
+.files-admin-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+.files-admin-layout .card + .card { margin-top: 0; }
+@media (max-width: 960px) { .files-admin-layout { grid-template-columns: 1fr; } }
+.files-facts { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; }

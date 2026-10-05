@@ -133,6 +133,7 @@
       <button data-view="notices" class="admin-only"><svg class="ico"><use href="#i-bell"/></svg>Benachrichtigungen<span class="nav-count" id="noticeCount" hidden></span></button>
       <button data-view="audit" class="admin-only"><svg class="ico"><use href="#i-list"/></svg>Protokoll</button>
       <button data-view="branding" class="admin-only"><svg class="ico"><use href="#i-brush"/></svg>Darstellung</button>
+      <button data-view="filesadmin" class="admin-only"><svg class="ico"><use href="#i-filelock"/></svg>Dateien</button>
       <button data-view="backup" class="admin-only"><svg class="ico"><use href="#i-backup"/></svg>Sicherung<span class="nav-dot" id="backupDot" hidden title="Bitte prüfen"></span></button>
     </nav>
 
@@ -819,11 +820,6 @@
             <span class="muted small" id="brAngleValue">135°</span>
           </div>
 
-          <div class="field-label" style="margin-top: 18px">Bereiche</div>
-          <label class="switch"><input type="checkbox" id="fiEnabled"><span class="track"></span><span>Dateien verschlüsseln anzeigen</span></label>
-          <div class="branding-colors"><span class="muted small">Höchstens</span><input type="number" id="fiMax" min="1" max="4000" style="width: 90px"><span class="muted small">MB je Vorgang</span>
-            <button class="btn ghost" type="button" id="fiSave">Übernehmen</button></div>
-
           <div class="actions">
             <button class="btn ghost" type="button" id="brReset">Standard</button>
             <button class="btn primary" type="button" id="brSave"><svg class="ico"><use href="#i-check"/></svg>Speichern</button>
@@ -834,6 +830,52 @@
           <div class="branding-preview" id="brPreview">
             <div class="branding-preview-card"><div class="brand-preview-line"></div><div class="brand-preview-line short"></div><div class="brand-preview-btn"></div></div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dateien verschlüsseln, Einstellungen -->
+    <section class="view" id="view-filesadmin" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Dateien verschlüsseln</h1>
+          <p class="muted">Damit verschlüsselt das Team Röntgenbilder, Befunde und andere Dateien mit Kennwort, für Empfänger ohne KIM.</p>
+        </div>
+      </header>
+
+      <div class="files-admin-layout">
+        <div class="card">
+          <div class="card-title">Einstellungen</div>
+          <label class="switch"><input type="checkbox" id="fiEnabled"><span class="track"></span><span>Bereich anzeigen</span></label>
+          <p class="muted small">Erscheint dann bei allen Benutzern unter Arbeiten. Braucht die Praxis das nicht, einfach aus lassen.</p>
+          <div class="form-grid" style="margin-top: 12px">
+            <label class="field">
+              <span>Höchstgröße je Vorgang in MB</span>
+              <input type="number" id="fiMax" min="1" max="4000">
+              <small class="muted">Alle Dateien eines Vorgangs zusammen, zwischen 1 und 4000 MB.</small>
+            </label>
+            <label class="field">
+              <span>Standard Dateiname</span>
+              <input type="text" id="fiDefaultName" maxlength="60" spellcheck="false" placeholder="dokumente">
+              <small class="muted">Ohne Patientennamen, der Name ist für jeden sichtbar. Beim Verschlüsseln lässt er sich ändern.</small>
+            </label>
+          </div>
+          <label class="switch"><input type="checkbox" id="fiAppendDate"><span class="track"></span><span>Datum anhängen</span></label>
+          <p class="muted small">Beispiel: <code id="fiNameExample"></code></p>
+          <div class="actions">
+            <button class="btn primary" type="button" id="fiSave"><svg class="ico"><use href="#i-check"/></svg>Speichern</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">So werden die Dateien geschützt</div>
+          <ul class="files-facts">
+            <li>Verschlüsselt mit AES-256, auch die Dateinamen.</li>
+            <li>Der Empfänger öffnet die Datei mit 7-Zip, WinRAR oder auf dem Mac mit Keka.</li>
+            <li>Das Kennwort hat mindestens 12 Zeichen. Mit <strong>Erzeugen</strong> entsteht ein sicheres, das sich gut am Telefon durchgeben lässt.</li>
+            <li>Zwijg speichert die Dateien nicht. Sie werden nur während des Vorgangs bearbeitet.</li>
+            <li>Im Protokoll stehen Anzahl und Größe, nie Dateinamen.</li>
+          </ul>
         </div>
       </div>
     </section>

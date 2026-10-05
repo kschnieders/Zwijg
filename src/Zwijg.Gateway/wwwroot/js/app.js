@@ -1053,9 +1053,6 @@ function previewBranding() {
 
 async function loadBrandingAdmin() {
   await loadBranding();
-  const settings = await api("GET", "/admin/settings");
-  $("fiEnabled").checked = !!settings.files?.enabled;
-  $("fiMax").value = settings.files?.maxSizeMb ?? 500;
   const b = branding || {};
   $("brName").value = b.name || "";
   $("brAccentOn").checked = !!b.accent;
@@ -1228,7 +1225,7 @@ $("fiEncrypt").addEventListener("click", async () => {
   // Kennwort und Name vor den Dateien, der Server verschlüsselt dann gleich beim Lesen
   const form = new FormData();
   form.append("password", password);
-  form.append("name", $("fiName").value.trim() || "dokumente");
+  form.append("name", $("fiName").value.trim() || defaultFileName());
   for (const f of filesState.list) form.append("file", f, f.name);
 
   try {
@@ -1236,6 +1233,7 @@ $("fiEncrypt").addEventListener("click", async () => {
     toast(`${name} gespeichert. Kennwort bitte getrennt weitergeben.`);
     filesState.list = [];
     renderFileList();
+    $("fiName").value = defaultFileName();
   } catch (err) { toast(err.message, true); }
 });
 
@@ -1257,10 +1255,39 @@ $("fiOpen").addEventListener("click", async () => {
   } catch (err) { toast(err.message, true); }
 });
 
-// Einstellung für Admins auf der Seite Darstellung
+// Name mit Datum als Jahr-Monat-Tag, so stehen die Dateien im Ordner in der richtigen Reihenfolge
+function fileNameWithDate(name, appendDate) {
+  const base = name || "dokumente";
+  return appendDate ? `${base}-${new Date().toLocaleDateString("sv-SE")}` : base;
+}
+
+function defaultFileName() {
+  return fileNameWithDate(state.me.files?.defaultName, state.me.files?.appendDate);
+}
+
+async function prepareFiles() {
+  $("fiName").value = defaultFileName();
+}
+
+// Einstellungen für Admins unter Verwaltung
+function showFileNameExample() {
+  $("fiNameExample").textContent = fileNameWithDate($("fiDefaultName").value.trim(), $("fiAppendDate").checked) + "-verschluesselt.zip";
+}
+
+async function loadFilesAdmin() {
+  const settings = await api("GET", "/admin/settings");
+  $("fiEnabled").checked = !!settings.files?.enabled;
+  $("fiMax").value = settings.files?.maxSizeMb ?? 500;
+  $("fiDefaultName").value = settings.files?.defaultName ?? "dokumente";
+  $("fiAppendDate").checked = settings.files?.appendDate ?? true;
+  showFileNameExample();
+}
+$("fiDefaultName").addEventListener("input", showFileNameExample);
+$("fiAppendDate").addEventListener("change", showFileNameExample);
+
 async function saveFilesSetting() {
   try {
-    await api("PUT", "/admin/files", { enabled: $("fiEnabled").checked, maxSizeMb: Number($("fiMax").value) || 500 });
+    await api("PUT", "/admin/files", { enabled: $("fiEnabled").checked, maxSizeMb: Number($("fiMax").value) || 500, defaultName: $("fiDefaultName").value.trim(), appendDate: $("fiAppendDate").checked });
     toast("Gespeichert");
     await reloadMe();
   } catch (err) { toast(err.message, true); }
@@ -1448,7 +1475,7 @@ function show(view) {
   document.querySelector(".nav button.active")?.scrollIntoView({ block: "nearest" });
   document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "view-" + view);
 
-  const loaders = { dashboard: loadDashboard, connections: loadConnections, rules: loadRules, users: loadUsers, notices: loadNotices, audit: loadAudit, backup: loadBackup, branding: loadBrandingAdmin };
+  const loaders = { dashboard: loadDashboard, connections: loadConnections, rules: loadRules, users: loadUsers, notices: loadNotices, audit: loadAudit, backup: loadBackup, branding: loadBrandingAdmin, filesadmin: loadFilesAdmin, files: prepareFiles };
   // Nur eigene Einträge aufrufen, nie etwas wie "constructor" aus der Adresszeile
   if (Object.hasOwn(loaders, view))
     loaders[view]().catch(err => toast(err.message, true));

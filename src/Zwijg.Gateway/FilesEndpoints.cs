@@ -7,13 +7,14 @@ using Zwijg.Gateway.Settings;
 
 namespace Zwijg.Gateway;
 
-public sealed record FilesInput(bool Enabled, int MaxSizeMb);
+public sealed record FilesInput(bool Enabled, int MaxSizeMb, string? DefaultName = null, bool AppendDate = true);
 
 // Dateien verschlüsseln und wieder öffnen, für den Versand an Empfänger ohne KIM.
 // Der Upload wird Stück für Stück gelesen und gleich verschlüsselt. Eine unverschlüsselte Kopie liegt nie auf der Platte.
 public static class FilesEndpoints
 {
     public const int MinPasswordLength = 12;
+    public const int MaxDefaultNameLength = 60;
 
     public static void MapFiles(this WebApplication app)
     {
@@ -162,9 +163,12 @@ public static class FilesEndpoints
         {
             if (input.MaxSizeMb is < 1 or > 4000)
                 return Results.BadRequest(new { error = "Bitte eine Größe zwischen 1 und 4000 MB angeben" });
+            if (input.DefaultName?.Length > MaxDefaultNameLength)
+                return Results.BadRequest(new { error = $"Der Dateiname darf höchstens {MaxDefaultNameLength} Zeichen haben" });
+            var name = string.IsNullOrWhiteSpace(input.DefaultName) ? "dokumente" : Path.GetFileNameWithoutExtension(EncryptedZipWriter.SafeName(input.DefaultName));
             return await AdminSettingsEndpoints.ChangeAsync(ctx, store, audit,
                 input.Enabled ? $"Dateien verschlüsseln eingeschaltet, bis {input.MaxSizeMb} MB" : "Dateien verschlüsseln ausgeschaltet",
-                s => s.Files = new FilesSettings { Enabled = input.Enabled, MaxSizeMb = input.MaxSizeMb });
+                s => s.Files = new FilesSettings { Enabled = input.Enabled, MaxSizeMb = input.MaxSizeMb, DefaultName = name, AppendDate = input.AppendDate });
         });
     }
 

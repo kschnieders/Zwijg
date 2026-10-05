@@ -254,6 +254,11 @@ public sealed class FilesSettings
 
     // Alle Dateien eines Vorgangs zusammen
     public int MaxSizeMb { get; set; } = 500;
+
+    // Vorschlag für den Namen der verschlüsselten Datei, auf Wunsch mit Datum am Ende
+    public string DefaultName { get; set; } = "dokumente";
+
+    public bool AppendDate { get; set; } = true;
 }
 
 public sealed class BrandingSettings

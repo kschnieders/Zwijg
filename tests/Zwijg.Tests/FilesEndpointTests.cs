@@ -91,4 +91,27 @@ public class FilesEndpointTests(PatientFactory factory) : IClassFixture<PatientF
             await Enable();
         }
     }
+
+    [Fact]
+    public async Task Standard_Dateiname_wird_gespeichert_und_bereinigt()
+    {
+        var admin = Client("admin-key");
+        try
+        {
+            (await admin.PutAsJsonAsync("/admin/files", new { enabled = true, maxSizeMb = 500, defaultName = "../Befunde:Praxis", appendDate = false })).EnsureSuccessStatusCode();
+            var files = (await Client().GetFromJsonAsync<JsonObject>("/v1/me"))!["files"]!;
+            Assert.Equal("BefundePraxis", files["defaultName"]!.GetValue<string>());
+            Assert.False(files["appendDate"]!.GetValue<bool>());
+
+            var tooLong = await admin.PutAsJsonAsync("/admin/files", new { enabled = true, maxSizeMb = 500, defaultName = new string('a', 61) });
+            Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+        }
+        finally
+        {
+            await Enable();
+        }
+        var reset = (await Client().GetFromJsonAsync<JsonObject>("/v1/me"))!["files"]!;
+        Assert.Equal("dokumente", reset["defaultName"]!.GetValue<string>());
+        Assert.True(reset["appendDate"]!.GetValue<bool>());
+    }
 }
