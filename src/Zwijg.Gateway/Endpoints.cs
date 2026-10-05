@@ -295,6 +295,7 @@ public static class Endpoints
                 mustChangePassword = record.MustChangePassword,
                 tourSeen = record.TourSeen,
                 idleLogoutMinutes = settings.Current.IdleLogoutMinutes,
+                files = settings.Current.Files.Enabled ? new { settings.Current.Files.MaxSizeMb, minPassword = FilesEndpoints.MinPasswordLength } : null,
                 // Nur Admins: ob die Sicherung läuft, für den Hinweis nach der Anmeldung
                 backup = user.IsAdmin ? new { state = backup.State, backup.Status.LastSuccess, backup.Status.LastError } : null,
                 viaSession = user.ViaSession,
@@ -353,6 +354,7 @@ public static class Endpoints
         app.MapDictation();
         Zwijg.Gateway.Backup.BackupEndpoints.MapBackup(app);
         app.MapBranding();
+        app.MapFiles();
         app.MapAdminRules();
         app.MapHistory();
         app.MapAuth();
@@ -489,7 +491,7 @@ public static class Endpoints
         e.Blocked ? AuditStatus.Blocked
         : e.Reason?.StartsWith("Anbieterfehler") == true || e.Reason?.StartsWith("Kein Anbieter") == true ? AuditStatus.Error
         : e.Reason?.StartsWith("Warnung") == true ? AuditStatus.Warning
-        : e.Action is "chat" or "document" or "protect" or "dictation" ? AuditStatus.Ok
+        : e.Action is "chat" or "document" or "protect" or "dictation" or "files" ? AuditStatus.Ok
         : null;
 
     private static object View(AuditEntry e) => new

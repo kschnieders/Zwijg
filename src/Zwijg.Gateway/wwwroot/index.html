@@ -50,6 +50,7 @@
     <symbol id="i-backup" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></symbol>
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></symbol>
     <symbol id="i-brush" viewBox="0 0 24 24"><path d="M14 4l6 6-8 8H6v-6z"/><path d="M4 20h4"/></symbol>
+    <symbol id="i-filelock" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4"/><path d="M14 3v5h5M19 8l-5-5"/><rect x="13" y="15" width="8" height="6" rx="1.5"/><path d="M15 15v-2a2 2 0 0 1 4 0v2"/></symbol>
     <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></symbol>
@@ -111,6 +112,7 @@
       <div class="nav-label">Arbeiten</div>
       <button data-view="chat"><svg class="ico"><use href="#i-chat"/></svg>Chat</button>
       <button data-view="doc" id="navDoc"><svg class="ico"><use href="#i-doc"/></svg>Dokument</button>
+      <button data-view="files" id="navFiles" hidden><svg class="ico"><use href="#i-filelock"/></svg>Dateien verschlüsseln</button>
       <button data-view="protect" id="navProtect"><svg class="ico"><use href="#i-copy"/></svg>Text schützen</button>
 
       <!-- Verlauf als eigener Abschnitt, Überschrift klappt auf und zu -->
@@ -722,6 +724,65 @@
       <div class="notice-list" id="noticeList"></div>
     </section>
 
+    <!-- Dateien verschlüsseln -->
+    <section class="view" id="view-files" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Dateien verschlüsseln</h1>
+          <p class="muted">Für Empfänger ohne KIM, zum Beispiel Patienten, Gutachter oder Kliniken. Sie öffnen die Datei mit 7-Zip, WinRAR oder auf dem Mac mit Keka. Mit KIM ist KIM der bessere Weg.</p>
+        </div>
+      </header>
+      <div class="files-layout">
+        <div class="card">
+          <div class="card-title"><span class="step">1</span>Verschlüsseln</div>
+          <label class="drop" id="fiDrop">
+            <input type="file" id="fiInput" multiple hidden>
+            <svg class="ico drop-ico"><use href="#i-upload"/></svg>
+            <strong>Dateien hierher ziehen oder klicken</strong>
+            <span class="muted small">Röntgenbilder, Befunde, PDFs. Auch die Dateinamen werden verschlüsselt.</span>
+          </label>
+          <div class="backup-files" id="fiList"></div>
+          <div class="muted small" id="fiTotal"></div>
+          <div class="form-grid" style="margin-top: 12px">
+            <label class="field files-password">
+              <span>Kennwort</span>
+              <div class="with-button">
+                <input type="password" id="fiPassword" autocomplete="new-password" spellcheck="false">
+                <button class="btn ghost" type="button" id="fiShow" title="Anzeigen"><svg class="ico"><use href="#i-eye"/></svg></button>
+                <button class="btn ghost" type="button" id="fiCopy" title="Kopieren"><svg class="ico"><use href="#i-copy"/></svg></button>
+                <button class="btn" type="button" id="fiGenerate"><svg class="ico"><use href="#i-refresh"/></svg>Erzeugen</button>
+              </div>
+              <small class="muted">Das Kennwort nie in dieselbe E-Mail schreiben. Am besten anrufen oder per SMS schicken.</small>
+            </label>
+            <label class="field">
+              <span>Name der Datei</span>
+              <input type="text" id="fiName" value="dokumente" spellcheck="false">
+              <small class="muted">Ohne Patientennamen, er ist für jeden sichtbar.</small>
+            </label>
+          </div>
+          <div class="actions">
+            <button class="btn primary" type="button" id="fiEncrypt" disabled><svg class="ico"><use href="#i-lock"/></svg>Verschlüsseln und speichern</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="step">2</span>Verschlüsselte Datei öffnen</div>
+          <label class="drop small-drop">
+            <input type="file" id="fiOpenInput" accept=".zip,application/zip" hidden>
+            <svg class="ico drop-ico"><use href="#i-upload"/></svg>
+            <strong id="fiOpenName">ZIP Datei wählen</strong>
+            <span class="muted small">Aus Zwijg, 7-Zip oder WinRAR, mit Kennwort</span>
+          </label>
+          <label class="field" style="margin-top: 12px">
+            <span>Kennwort</span>
+            <input type="password" id="fiOpenPassword" autocomplete="off" spellcheck="false">
+          </label>
+          <div class="actions">
+            <button class="btn primary" type="button" id="fiOpen" disabled><svg class="ico"><use href="#i-download"/></svg>Öffnen und speichern</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Darstellung -->
     <section class="view" id="view-branding" hidden>
       <header class="view-head">
@@ -757,6 +818,11 @@
             <input type="range" id="brAngle" min="0" max="360" step="15" value="135">
             <span class="muted small" id="brAngleValue">135°</span>
           </div>
+
+          <div class="field-label" style="margin-top: 18px">Bereiche</div>
+          <label class="switch"><input type="checkbox" id="fiEnabled"><span class="track"></span><span>Dateien verschlüsseln anzeigen</span></label>
+          <div class="branding-colors"><span class="muted small">Höchstens</span><input type="number" id="fiMax" min="1" max="4000" style="width: 90px"><span class="muted small">MB je Vorgang</span>
+            <button class="btn ghost" type="button" id="fiSave">Übernehmen</button></div>
 
           <div class="actions">
             <button class="btn ghost" type="button" id="brReset">Standard</button>
@@ -869,6 +935,7 @@
                 <option value="document">Dokument</option>
                 <option value="protect">Text schützen</option>
                 <option value="dictation">Diktat</option>
+                <option value="files">Dateien</option>
                 <option value="admin">Verwaltung</option>
                 <option value="login">Anmeldung</option>
               </select>
@@ -1343,6 +1410,7 @@
       <li><span><strong>SQLitePCLRaw</strong><small>SourceGear</small></span><span class="lic">Apache 2.0</span></li>
       <li><span><strong>SQLite</strong><small>sqlite.org</small></span><span class="lic">Public Domain</span></li>
       <li><span><strong>Docnet mit PDFium</strong><small>Seiten von Scans als Bild, für die Texterkennung</small></span><span class="lic">MIT, BSD</span></li>
+      <li><span><strong>SharpZipLib</strong><small>ICSharpCode, für verschlüsselte ZIP Dateien</small></span><span class="lic">MIT</span></li>
       <li><span><strong>Whisper.net mit whisper.cpp</strong><small>Sandro Hanea, Georgi Gerganov, für das Diktieren</small></span><span class="lic">MIT</span></li>
       <li><span><strong>Ortsliste</strong><small>GeoNames, geonames.org</small></span><span class="lic">CC BY 4.0</span></li>
     </ul>

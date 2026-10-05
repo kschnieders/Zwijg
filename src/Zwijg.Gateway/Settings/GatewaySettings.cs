@@ -51,6 +51,9 @@ public sealed class GatewaySettings
 
     // Eigenes Aussehen: Praxisname, Logo, Farben
     public BrandingSettings Branding { get; set; } = new();
+
+    // Dateien verschlüsseln, für den Versand an Empfänger ohne KIM
+    public FilesSettings Files { get; set; } = new();
 }
 
 public sealed class Connection
@@ -242,6 +245,15 @@ public sealed class HistoryOptions
 
     // Angepinnte bleiben, bis man sie löst. Deshalb eine eigene Obergrenze.
     public int MaxPinned { get; set; } = 10;
+}
+
+public sealed class FilesSettings
+{
+    // Aus, bis ein Admin den Bereich einschaltet. Nicht jede Praxis braucht ihn.
+    public bool Enabled { get; set; }
+
+    // Alle Dateien eines Vorgangs zusammen
+    public int MaxSizeMb { get; set; } = 500;
 }
 
 public sealed class BrandingSettings

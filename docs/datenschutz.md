@@ -24,7 +24,7 @@ Alles liegt im Ordner `data` auf dem Rechner, auf dem Zwijg läuft.
 | `keys` | Schlüssel für die Verschlüsselung | unter Windows an das Benutzerkonto gebunden (DPAPI), sonst mit Zertifikat | dauerhaft |
 | Sicherungen | Kopie von allem oben | mit Passwort verschlüsselt (AES-256-GCM) | 7 Tage und 4 Wochen |
 
-Nicht gespeichert werden: Aufnahmen beim Diktieren, hochgeladene Dokumente und Zwischenbilder der Texterkennung. Sie werden nur im Arbeitsspeicher oder kurz in einem temporären Ordner verarbeitet.
+Nicht gespeichert werden: Dateien aus **Dateien verschlüsseln** (sie werden beim Hochladen gleich verschlüsselt, im Protokoll stehen nur Anzahl und Größe), Aufnahmen beim Diktieren, hochgeladene Dokumente und Zwischenbilder der Texterkennung. Sie werden nur im Arbeitsspeicher oder kurz in einem temporären Ordner verarbeitet.
 
 ## Was an Dritte geht
 
