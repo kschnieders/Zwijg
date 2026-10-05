@@ -295,7 +295,7 @@ public static class Endpoints
                 mustChangePassword = record.MustChangePassword,
                 tourSeen = record.TourSeen,
                 idleLogoutMinutes = settings.Current.IdleLogoutMinutes,
-                files = settings.Current.Files.Enabled ? new { settings.Current.Files.MaxSizeMb, minPassword = FilesEndpoints.MinPasswordLength } : null,
+                files = settings.Current.Files.Enabled ? new { settings.Current.Files.MaxSizeMb, minPassword = FilesEndpoints.MinPasswordLength, settings.Current.Files.DefaultName, settings.Current.Files.AppendDate } : null,
                 // Nur Admins: ob die Sicherung läuft, für den Hinweis nach der Anmeldung
                 backup = user.IsAdmin ? new { state = backup.State, backup.Status.LastSuccess, backup.Status.LastError } : null,
                 viaSession = user.ViaSession,

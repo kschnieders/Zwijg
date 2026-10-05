@@ -66,7 +66,7 @@ Ein kopierter Text verlässt die Praxis. Deshalb gelten dieselben Regeln wie fü
 
 ## Dateien verschlüsseln
 
-Für Empfänger ohne KIM, etwa Patienten oder Gutachter. Admins schalten den Bereich unter **Verwaltung**, **Dateien** ein und legen dort die Höchstgröße fest.
+Für Empfänger ohne KIM, etwa Patienten oder Gutachter. Admins schalten den Bereich unter **Verwaltung**, **Dateien** ein und legen dort die Höchstgröße und einen Standard Dateinamen fest, auf Wunsch mit Datum am Ende.
 
 1. Links auf **Dateien verschlüsseln**, Dateien hineinziehen
 2. **Erzeugen** klicken, das Kennwort ist gut diktierbar

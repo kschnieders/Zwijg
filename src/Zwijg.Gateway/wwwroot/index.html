@@ -854,7 +854,14 @@
               <input type="number" id="fiMax" min="1" max="4000">
               <small class="muted">Alle Dateien eines Vorgangs zusammen, zwischen 1 und 4000 MB.</small>
             </label>
+            <label class="field">
+              <span>Standard Dateiname</span>
+              <input type="text" id="fiDefaultName" maxlength="60" spellcheck="false" placeholder="dokumente">
+              <small class="muted">Ohne Patientennamen, der Name ist für jeden sichtbar. Beim Verschlüsseln lässt er sich ändern.</small>
+            </label>
           </div>
+          <label class="switch"><input type="checkbox" id="fiAppendDate"><span class="track"></span><span>Datum anhängen</span></label>
+          <p class="muted small">Beispiel: <code id="fiNameExample"></code></p>
           <div class="actions">
             <button class="btn primary" type="button" id="fiSave"><svg class="ico"><use href="#i-check"/></svg>Speichern</button>
           </div>
