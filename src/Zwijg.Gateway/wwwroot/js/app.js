@@ -46,7 +46,7 @@ const PRESETS = {
   },
 };
 
-const ACTIONS = { chat: "Chat", document: "Dokument", protect: "Text schützen", dictation: "Diktat", admin: "Verwaltung", login: "Anmeldung" };
+const ACTIONS = { chat: "Chat", document: "Dokument", protect: "Text schützen", dictation: "Diktat", files: "Dateien", admin: "Verwaltung", login: "Anmeldung" };
 const SENSITIVITY = { None: "keine", Low: "niedrig", Medium: "mittel", High: "hoch" };
 const MODES = { Auto: "Automatisch", LocalOnly: "Nur lokal", CloudOnly: "Nur Cloud" };
 const LEVELS = { Info: "Info", Warning: "Hinweis", Critical: "Wichtig" };
@@ -723,6 +723,8 @@ function tourSteps() {
       text: "Für Programme, die nicht an Zwijg angebunden sind: Text hier schützen, dort einfügen und die Antwort hier mit den echten Daten zurückholen." },
     { el: "#convSection", title: "Verlauf",
       text: "Unterhaltungen werden verschlüsselt gespeichert. So kannst du später weitermachen." },
+    me.files && { el: "#navFiles", title: "Dateien verschlüsseln",
+      text: "Röntgenbilder und Befunde mit Kennwort verschlüsseln, für Empfänger ohne KIM. Die Datei öffnet man mit 7-Zip oder WinRAR." },
     me.admin && { el: ".nav .admin-only", title: "Verwaltung",
       text: "Als Admin richtest du hier die KI Modelle, Regeln und Benutzer ein. Im Protokoll steht, wer wann was gefragt hat, ohne Klartext." },
     { el: "#whoBox", title: "Dein Konto",
@@ -1051,6 +1053,9 @@ function previewBranding() {
 
 async function loadBrandingAdmin() {
   await loadBranding();
+  const settings = await api("GET", "/admin/settings");
+  $("fiEnabled").checked = !!settings.files?.enabled;
+  $("fiMax").value = settings.files?.maxSizeMb ?? 500;
   const b = branding || {};
   $("brName").value = b.name || "";
   $("brAccentOn").checked = !!b.accent;
@@ -1112,6 +1117,155 @@ $("brLogoRemove").addEventListener("click", async () => {
 
 // Verlässt man die Seite ohne Speichern, gilt wieder das gespeicherte Aussehen
 document.querySelectorAll(".nav button").forEach(b => b.addEventListener("click", () => { if (b.dataset.view !== "branding") applyBranding(); }));
+
+// Dateien verschlüsseln und öffnen. Die Arbeit macht der Server, hier nur Auswahl, Kennwort und Herunterladen.
+const filesState = { list: [] };
+
+// Gut diktierbares Kennwort aus Silben, etwa "Kalome-Tusape-Nirado-Bufeki-47". Rund 80 Bit Zufall.
+function generateFilePassword() {
+  const consonants = "bdfgklmnprstvz", vowels = "aeiou";
+  const random = max => {
+    const limit = Math.floor(0x100000000 / max) * max;
+    const buf = new Uint32Array(1);
+    do crypto.getRandomValues(buf); while (buf[0] >= limit);
+    return buf[0] % max;
+  };
+  const syllable = () => consonants[random(consonants.length)] + vowels[random(vowels.length)];
+  const groups = Array.from({ length: 4 }, () => {
+    const g = syllable() + syllable() + syllable();
+    return g[0].toUpperCase() + g.slice(1);
+  });
+  return groups.join("-") + "-" + String(random(90) + 10);
+}
+
+function formatSize(bytes) {
+  return bytes < 1048576 ? Math.max(1, Math.round(bytes / 1024)) + " KB" : (bytes / 1048576).toFixed(1) + " MB";
+}
+
+function renderFileList() {
+  const total = filesState.list.reduce((n, f) => n + f.size, 0);
+  $("fiList").innerHTML = filesState.list.map((f, i) => `<div class="backup-file">${icon("doc")}<span class="backup-name">${esc(f.name)}</span>
+      <span class="muted small">${formatSize(f.size)}</span>
+      <button class="icon-btn" type="button" data-remove-file="${i}" title="Entfernen" aria-label="Entfernen">${icon("x")}</button></div>`).join("");
+  $("fiTotal").textContent = filesState.list.length ? `${filesState.list.length} ${filesState.list.length === 1 ? "Datei" : "Dateien"}, ${formatSize(total)}` : "";
+  $("fiEncrypt").disabled = !filesState.list.length;
+}
+
+function addFiles(files) {
+  filesState.list.push(...files);
+  renderFileList();
+}
+
+// Antwort als Datei speichern, den Namen schickt der Server mit
+async function downloadResponse(res) {
+  const header = res.headers.get("Content-Disposition") || "";
+  const star = header.match(/filename\*=UTF-8''([^;]+)/i);
+  const plain = header.match(/filename="?([^";]+)"?/i);
+  const name = star ? decodeURIComponent(star[1]) : plain ? plain[1] : "datei";
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  return name;
+}
+
+async function sendFiles(path, form, button, label) {
+  button.disabled = true;
+  const original = button.innerHTML;
+  button.innerHTML = `${icon("clock")}${label}`;
+  try {
+    const res = await api("POST", path, form, { raw: true });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Fehler ${res.status}`);
+    }
+    return await downloadResponse(res);
+  } finally {
+    button.innerHTML = original;
+    button.disabled = false;
+  }
+}
+
+$("fiDrop").addEventListener("dragover", e => { e.preventDefault(); $("fiDrop").classList.add("over"); });
+$("fiDrop").addEventListener("dragleave", () => $("fiDrop").classList.remove("over"));
+$("fiDrop").addEventListener("drop", e => {
+  e.preventDefault();
+  $("fiDrop").classList.remove("over");
+  addFiles([...e.dataTransfer.files]);
+});
+$("fiInput").addEventListener("change", e => { addFiles([...e.target.files]); e.target.value = ""; });
+$("fiList").addEventListener("click", e => {
+  const b = e.target.closest("[data-remove-file]");
+  if (!b) return;
+  filesState.list.splice(Number(b.dataset.removeFile), 1);
+  renderFileList();
+});
+
+$("fiGenerate").addEventListener("click", () => {
+  $("fiPassword").value = generateFilePassword();
+  $("fiPassword").type = "text";
+});
+$("fiShow").addEventListener("click", () => { $("fiPassword").type = $("fiPassword").type === "password" ? "text" : "password"; });
+$("fiCopy").addEventListener("click", () => copyText($("fiPassword").value, "Kennwort kopiert"));
+
+$("fiEncrypt").addEventListener("click", async () => {
+  const password = $("fiPassword").value;
+  const max = (state.me.files?.maxSizeMb || 500) * 1048576;
+  const total = filesState.list.reduce((n, f) => n + f.size, 0);
+  if (password.length < (state.me.files?.minPassword || 12)) {
+    toast(`Das Kennwort braucht mindestens ${state.me.files?.minPassword || 12} Zeichen. Mit Erzeugen geht es am einfachsten.`, true);
+    return;
+  }
+  if (total > max) {
+    toast(`Zusammen höchstens ${state.me.files.maxSizeMb} MB`, true);
+    return;
+  }
+
+  // Kennwort und Name vor den Dateien, der Server verschlüsselt dann gleich beim Lesen
+  const form = new FormData();
+  form.append("password", password);
+  form.append("name", $("fiName").value.trim() || "dokumente");
+  for (const f of filesState.list) form.append("file", f, f.name);
+
+  try {
+    const name = await sendFiles("/v1/files/encrypt", form, $("fiEncrypt"), "wird verschlüsselt ...");
+    toast(`${name} gespeichert. Kennwort bitte getrennt weitergeben.`);
+    filesState.list = [];
+    renderFileList();
+  } catch (err) { toast(err.message, true); }
+});
+
+$("fiOpenInput").addEventListener("change", e => {
+  $("fiOpenName").textContent = e.target.files[0]?.name || "Keine Datei gewählt";
+  $("fiOpen").disabled = !e.target.files[0];
+});
+
+$("fiOpen").addEventListener("click", async () => {
+  const file = $("fiOpenInput").files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append("password", $("fiOpenPassword").value);
+  form.append("file", file, file.name);
+  try {
+    const name = await sendFiles("/v1/files/decrypt", form, $("fiOpen"), "wird geöffnet ...");
+    toast(`${name} gespeichert`);
+    $("fiOpenPassword").value = "";
+  } catch (err) { toast(err.message, true); }
+});
+
+// Einstellung für Admins auf der Seite Darstellung
+async function saveFilesSetting() {
+  try {
+    await api("PUT", "/admin/files", { enabled: $("fiEnabled").checked, maxSizeMb: Number($("fiMax").value) || 500 });
+    toast("Gespeichert");
+    await reloadMe();
+  } catch (err) { toast(err.message, true); }
+}
+$("fiSave").addEventListener("click", saveFilesSetting);
 
 // Über Zwijg: Ersteller, Quellcode und Lizenzen. Geht auch ohne Anmeldung.
 async function openAbout() {
@@ -1197,6 +1351,7 @@ function applyMe() {
   // Ein kopierter Text verlässt die Praxis, das gibt es nur für Leute, die in die Cloud dürfen
   $("navProtect").hidden = !me.cloudAllowed;
   $("dictate").hidden = !me.dictation;
+  $("navFiles").hidden = !me.files;
   $("previewCard").hidden = !me.showPreview;
   $("chatLayout").classList.toggle("solo", !me.showPreview);
   $("routeCloud").hidden = !me.cloudAllowed;
@@ -1285,6 +1440,7 @@ $("banners").addEventListener("click", async e => {
 function show(view) {
   if (view === "doc" && !state.me.canUseDocuments) view = "chat";
   if (view === "protect" && !state.me.cloudAllowed) view = "chat";
+  if (view === "files" && !state.me.files) view = "chat";
   if (!document.getElementById("view-" + view) || (!state.me.admin && document.querySelector(`.nav button[data-view="${view}"]`)?.classList.contains("admin-only"))) view = "chat";
   history.replaceState(null, "", "#" + view);
   document.querySelectorAll(".nav button").forEach(b => b.classList.toggle("active", b.dataset.view === view));

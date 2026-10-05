@@ -186,7 +186,7 @@ public sealed class SqliteAuditLog : IAuditLog
                 where.Add(isWarning);
                 break;
             case AuditStatus.Ok:
-                where.Add($"Blocked = 0 AND Action IN ('chat', 'document', 'protect', 'dictation') AND NOT {isError} AND NOT ({isWarning})");
+                where.Add($"Blocked = 0 AND Action IN ('chat', 'document', 'protect', 'dictation', 'files') AND NOT {isError} AND NOT ({isWarning})");
                 break;
         }
 

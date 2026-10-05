@@ -360,6 +360,7 @@ public static class AdminSettingsEndpoints
         s.LocalConnectionId,
         s.CloudConnectionId,
         s.IdleLogoutMinutes,
+        s.Files,
         policy = new { s.Routing, s.Injection, s.StorePrompts, s.UseLocalLlmForNames, s.ExtraNames, s.ExtraPlaces, s.IgnoredWords },
         users = s.Users.Select(u => new
         {
