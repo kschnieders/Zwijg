@@ -28,8 +28,10 @@ Bitte nur ausgedachte Daten wie "Max Mustermann" verwenden, nie echte Patientend
 
 ## Ablauf
 
-- **Eingang bestätigt** innerhalb von 7 Tagen
-- **Erste Einschätzung** innerhalb von 14 Tagen
+Zwijg wird aktuell von einer Person gepflegt. Die Fristen gelten deshalb in der Regel, im Urlaub oder bei Krankheit kann es ausnahmsweise etwas länger dauern.
+
+- **Eingang bestätigt** in der Regel innerhalb von 7 Tagen
+- **Erste Einschätzung** in der Regel innerhalb von 14 Tagen
 - **Korrektur** so schnell wie möglich, je nach Schwere. Bis dahin bleibt die Meldung vertraulich.
 - **Veröffentlichung** gemeinsam abgestimmt, sobald ein Update bereitsteht, spätestens nach 90 Tagen. Das Update steht im [Changelog](CHANGELOG.md) unter **Sicherheit**, dazu gibt es ein GitHub Security Advisory.
 
@@ -57,4 +59,4 @@ Bitte nur auf der eigenen Installation testen, nie auf fremden Systemen oder mit
 
 ## English
 
-Please do not open a public issue for security vulnerabilities. Report them privately via [GitHub Security Advisories](https://github.com/kschnieders/zwijg/security/advisories/new). Only the latest release receives security fixes. We confirm receipt within 7 days, give a first assessment within 14 days and coordinate disclosure with you once a fix is available, at the latest after 90 days. Please test only on your own installation and never use real patient data.
+Please do not open a public issue for security vulnerabilities. Report them privately via [GitHub Security Advisories](https://github.com/kschnieders/zwijg/security/advisories/new). Only the latest release receives security fixes. Zwijg is maintained by one person. We usually confirm receipt within 7 days, give a first assessment within 14 days and coordinate disclosure with you once a fix is available, at the latest after 90 days. Please test only on your own installation and never use real patient data.
