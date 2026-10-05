@@ -50,7 +50,7 @@ public class EncryptedZipTests : IDisposable
         var path = Encrypt(("Befund.pdf", "Inhalt 1"), ("Befund.pdf", "Inhalt 2"), ("../../boese.txt", "x"));
 
         await using var input = File.OpenRead(path);
-        var result = EncryptedZipReader.Open(input, Kennwort);
+        var result = EncryptedZipReader.Open(input, Kennwort, long.MaxValue);
         Assert.Equal(EncryptedZipWriter.InnerName, result.FileName);
 
         var inner = new MemoryStream();
@@ -65,7 +65,27 @@ public class EncryptedZipTests : IDisposable
     {
         var path = Encrypt(("a.txt", "geheim"));
         using var input = File.OpenRead(path);
-        Assert.Throws<WrongZipPasswordException>(() => EncryptedZipReader.Open(input, "falsches-kennwort"));
+        Assert.Throws<WrongZipPasswordException>(() => EncryptedZipReader.Open(input, "falsches-kennwort", long.MaxValue));
+    }
+
+    [Fact]
+    public async Task Zip_Bombe_wird_nicht_ausgepackt()
+    {
+        // 100 MB Nullen packen sich auf wenige Kilobyte
+        var path = Path.Combine(_dir, "bombe.zip");
+        using (var output = File.Create(path))
+        using (var zip = new ZipOutputStream(output) { Password = Kennwort })
+        {
+            zip.PutNextEntry(new ZipEntry("nullen.bin") { AESKeySize = 256 });
+            var block = new byte[1024 * 1024];
+            for (var i = 0; i < 100; i++)
+                zip.Write(block, 0, block.Length);
+            zip.CloseEntry();
+        }
+        Assert.True(new FileInfo(path).Length < 1024 * 1024);
+
+        await using var input = File.OpenRead(path);
+        Assert.Throws<FileTooLargeException>(() => EncryptedZipReader.Open(input, Kennwort, 10L * 1024 * 1024));
     }
 
     [Fact]

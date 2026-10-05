@@ -85,12 +85,16 @@ public static class EncryptedZipReader
     public sealed record Result(string FileName, Func<Stream, CancellationToken, Task> WriteTo);
 
     // input muss vollständig vorliegen (Datei oder Speicher). Prüft das Kennwort, bevor etwas geschrieben wird.
-    public static Result Open(Stream input, string password)
+    // maxOutputBytes: so viel darf ausgepackt herauskommen. Schützt vor "ZIP Bomben", die winzig sind
+    // und beim Auspacken riesig werden.
+    public static Result Open(Stream input, string password, long maxOutputBytes)
     {
         var zip = new ZipFile(input, leaveOpen: true) { Password = password };
         var entries = zip.Cast<ZipEntry>().Where(e => e.IsFile).ToList();
         if (entries.Count == 0)
             throw new InvalidDataException("Im Archiv sind keine Dateien.");
+        if (entries.Sum(e => Math.Max(0, e.Size)) > maxOutputBytes)
+            throw new FileTooLargeException();
 
         // Kennwort gleich am ersten Eintrag prüfen, ein Fehler kommt sonst erst mitten im Herunterladen
         try
@@ -113,7 +117,7 @@ public static class EncryptedZipReader
             return new Result(name, async (output, ct) =>
             {
                 await using var stream = zip.GetInputStream(only);
-                await stream.CopyToAsync(output, ct);
+                await CopyLimitedAsync(stream, output, maxOutputBytes, ct);
             });
         }
 
@@ -123,6 +127,7 @@ public static class EncryptedZipReader
             using var plain = new ZipOutputStream(output) { IsStreamOwner = false };
             // Ordner fallen weg, gleiche Namen bekommen eine Nummer
             var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var left = maxOutputBytes;
             foreach (var entry in entries)
             {
                 var name = EncryptedZipWriter.SafeName(entry.Name);
@@ -130,11 +135,27 @@ public static class EncryptedZipReader
                     name = $"{Path.GetFileNameWithoutExtension(EncryptedZipWriter.SafeName(entry.Name))} ({n}){Path.GetExtension(entry.Name)}";
                 plain.PutNextEntry(new ZipEntry(name) { DateTime = entry.DateTime });
                 using var stream = zip.GetInputStream(entry);
-                stream.CopyTo(plain);
+                left -= CopyLimitedAsync(stream, plain, left, ct).GetAwaiter().GetResult();
                 plain.CloseEntry();
             }
             plain.Finish();
             return Task.CompletedTask;
         });
+    }
+
+    // Kopiert höchstens max Bytes. Die Größe im Archiv kann gelogen sein, deshalb auch beim Lesen zählen.
+    private static async Task<long> CopyLimitedAsync(Stream input, Stream output, long max, CancellationToken ct)
+    {
+        var buffer = new byte[81920];
+        long total = 0;
+        int read;
+        while ((read = await input.ReadAsync(buffer, ct)) > 0)
+        {
+            total += read;
+            if (total > max)
+                throw new FileTooLargeException();
+            await output.WriteAsync(buffer.AsMemory(0, read), ct);
+        }
+        return total;
     }
 }

@@ -40,7 +40,12 @@ public static class FilesEndpoints
 
                     if (!disposition.IsFileDisposition())
                     {
-                        var value = await new StreamReader(section.Body).ReadToEndAsync(ct);
+                        var value = await ReadFieldAsync(section.Body, ct);
+                        if (value == null)
+                        {
+                            Discard(ref writer, temp);
+                            return Results.BadRequest(new { error = "Ein Feld ist zu lang" });
+                        }
                         if (field == "password") password = value;
                         else if (field == "name" && !string.IsNullOrWhiteSpace(value)) name = Path.GetFileNameWithoutExtension(EncryptedZipWriter.SafeName(value));
                         continue;
@@ -106,7 +111,7 @@ public static class FilesEndpoints
                 if (!disposition.IsFileDisposition())
                 {
                     if (disposition.Name.Value?.Trim('"') == "password")
-                        password = await new StreamReader(section.Body).ReadToEndAsync(ct);
+                        password = await ReadFieldAsync(section.Body, ct) ?? "";
                     continue;
                 }
                 await section.Body.CopyToAsync(temp, ct);
@@ -127,7 +132,8 @@ public static class FilesEndpoints
             temp.Position = 0;
             try
             {
-                var result = EncryptedZipReader.Open(temp, password);
+                // Ausgepackt höchstens das Vierfache der erlaubten Größe, sonst ist es eine ZIP Bombe
+                var result = EncryptedZipReader.Open(temp, password, o.MaxSizeMb * 4L * 1024L * 1024L);
                 await WriteAuditAsync(ctx, audit, "Verschlüsselte Datei geöffnet", ct);
                 return Results.Stream(async output =>
                 {
@@ -139,6 +145,11 @@ public static class FilesEndpoints
             {
                 await temp.DisposeAsync();
                 return Results.BadRequest(new { error = "Das Kennwort ist falsch." });
+            }
+            catch (FileTooLargeException)
+            {
+                await temp.DisposeAsync();
+                return Results.Json(new { error = "Ausgepackt wäre die Datei viel größer als erlaubt. Zwijg öffnet sie deshalb nicht." }, statusCode: 413);
             }
             catch (Exception ex) when (ex is ICSharpCode.SharpZipLib.SharpZipBaseException or InvalidDataException)
             {
@@ -169,6 +180,15 @@ public static class FilesEndpoints
             size.MaxRequestBodySize = o.MaxSizeMb * 1024L * 1024L + 1024 * 1024;
         if (ctx.Features.Get<IHttpBodyControlFeature>() is { } body)
             body.AllowSynchronousIO = true;
+    }
+
+    // Textfelder wie das Kennwort, höchstens 1000 Zeichen. Sonst ließe sich der Speicher mit einem riesigen Feld füllen.
+    private static async Task<string?> ReadFieldAsync(Stream body, CancellationToken ct)
+    {
+        var buffer = new char[1001];
+        using var reader = new StreamReader(body);
+        var length = await reader.ReadBlockAsync(buffer, ct);
+        return length > 1000 ? null : new string(buffer, 0, length);
     }
 
     // Abbruch: erst das Archiv schließen, dann die Datei, sonst schreibt das Archiv in eine geschlossene Datei

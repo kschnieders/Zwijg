@@ -65,6 +65,7 @@ public class FilesEndpointTests(PatientFactory factory) : IClassFixture<PatientF
     {
         await Enable();
         Assert.Equal(HttpStatusCode.BadRequest, (await Client().PostAsync("/v1/files/encrypt", Form("kurz", ("a.txt", [1])))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await Client().PostAsync("/v1/files/encrypt", Form(new string('x', 5000), ("a.txt", [1])))).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await Client().PostAsync("/v1/files/decrypt", Form(Kennwort, ("kein.zip", Encoding.UTF8.GetBytes("kein zip"))))).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await Client().PutAsJsonAsync("/admin/files", new { enabled = true, maxSizeMb = 10 })).StatusCode);
 
