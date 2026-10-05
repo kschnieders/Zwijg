@@ -1230,3 +1230,9 @@ input[type=range] { accent-color: var(--accent); }
 .drop.small-drop { padding: 22px 16px; }
 .files-password { grid-column: 1 / -1; }
 .files-password input { font-family: ui-monospace, Consolas, monospace; letter-spacing: .02em; }
+
+/* Dateien verschlüsseln, Einstellungen */
+.files-admin-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+.files-admin-layout .card + .card { margin-top: 0; }
+@media (max-width: 960px) { .files-admin-layout { grid-template-columns: 1fr; } }
+.files-facts { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; }

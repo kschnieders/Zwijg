@@ -1053,9 +1053,6 @@ function previewBranding() {
 
 async function loadBrandingAdmin() {
   await loadBranding();
-  const settings = await api("GET", "/admin/settings");
-  $("fiEnabled").checked = !!settings.files?.enabled;
-  $("fiMax").value = settings.files?.maxSizeMb ?? 500;
   const b = branding || {};
   $("brName").value = b.name || "";
   $("brAccentOn").checked = !!b.accent;
@@ -1257,7 +1254,13 @@ $("fiOpen").addEventListener("click", async () => {
   } catch (err) { toast(err.message, true); }
 });
 
-// Einstellung für Admins auf der Seite Darstellung
+// Einstellungen für Admins unter Verwaltung
+async function loadFilesAdmin() {
+  const settings = await api("GET", "/admin/settings");
+  $("fiEnabled").checked = !!settings.files?.enabled;
+  $("fiMax").value = settings.files?.maxSizeMb ?? 500;
+}
+
 async function saveFilesSetting() {
   try {
     await api("PUT", "/admin/files", { enabled: $("fiEnabled").checked, maxSizeMb: Number($("fiMax").value) || 500 });
@@ -1448,7 +1451,7 @@ function show(view) {
   document.querySelector(".nav button.active")?.scrollIntoView({ block: "nearest" });
   document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "view-" + view);
 
-  const loaders = { dashboard: loadDashboard, connections: loadConnections, rules: loadRules, users: loadUsers, notices: loadNotices, audit: loadAudit, backup: loadBackup, branding: loadBrandingAdmin };
+  const loaders = { dashboard: loadDashboard, connections: loadConnections, rules: loadRules, users: loadUsers, notices: loadNotices, audit: loadAudit, backup: loadBackup, branding: loadBrandingAdmin, filesadmin: loadFilesAdmin };
   // Nur eigene Einträge aufrufen, nie etwas wie "constructor" aus der Adresszeile
   if (Object.hasOwn(loaders, view))
     loaders[view]().catch(err => toast(err.message, true));
