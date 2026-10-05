@@ -97,6 +97,9 @@ public sealed partial class BackupService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Reste einer abgebrochenen Sicherung vom letzten Lauf entfernen
+        SecureTemp.CleanupStale("zwijg-sicherung");
+        SecureTemp.CleanupStale("zwijg-zurueck");
         try
         {
             // Nach dem Start erst kurz warten, dann jede Minute schauen, ob eine Sicherung fällig ist
@@ -147,16 +150,16 @@ public sealed partial class BackupService(
             var name = $"{Prefix}{started:yyyy-MM-dd-HHmmss}{BackupArchive.Extension}";
             var target = Path.Combine(b.Directory, name);
 
-            var work = Path.Combine(Path.GetTempPath(), $"zwijg-sicherung-{Guid.NewGuid():N}");
+            // Unverschlüsselte Kopien nur in einem Ordner, in den andere Benutzer nicht hineinkommen
+            var work = SecureTemp.CreateDirectory("zwijg-sicherung");
             try
             {
-                var files = await Task.Run(() => Snapshot(work), ct);
-                await Task.Run(() => BackupArchive.Create(target, files, password), ct);
+                var files = await Task.Run(() => Snapshot(Path.Combine(work, "daten")), ct);
+                await Task.Run(() => BackupArchive.Create(target, files, password, work), ct);
             }
             finally
             {
-                if (Directory.Exists(work))
-                    Directory.Delete(work, recursive: true);
+                SecureTemp.Delete(work);
             }
 
             var size = new FileInfo(target).Length;

@@ -65,7 +65,9 @@ builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.C
         // Eine API leitet nicht auf eine Login Seite um, sie antwortet mit 401 oder 403
         o.Events.OnRedirectToLogin = c => { c.Response.StatusCode = 401; return Task.CompletedTask; };
         o.Events.OnRedirectToAccessDenied = c => { c.Response.StatusCode = 403; return Task.CompletedTask; };
+        o.Events.OnValidatePrincipal = SessionIdle.ValidateAsync;
     });
+builder.Services.AddSingleton(TimeProvider.System);
 // Hinter einem HTTPS Proxy kommt die Anfrage per HTTP an. Das Cookie soll trotzdem nur über HTTPS gehen.
 builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
     .Configure<IOptions<GatewayOptions>>((o, gw) =>

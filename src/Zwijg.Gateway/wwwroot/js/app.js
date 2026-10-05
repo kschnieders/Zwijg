@@ -1384,7 +1384,11 @@ async function reloadMe() {
   // Gilt für Schlüssel und Passwort-Sitzung, nur abgemeldet nicht
   if (!state.me) return;
   try {
-    const me = await api("GET", "/v1/me");
+    // Läuft alle 60 Sekunden von selbst und zählt deshalb nicht als Eingabe, siehe SessionIdle
+    const res = await api("GET", "/v1/me", undefined, { raw: true, headers: { "X-Zwijg-Hintergrund": "1" } });
+    if (res.status === 401 && !state.key) { logout("Wegen Inaktivität abgemeldet. Bitte neu anmelden."); return; }
+    if (!res.ok) return;
+    const me = await res.json();
     const json = JSON.stringify(me);
     if (json !== state.meJson) {
       state.me = me;

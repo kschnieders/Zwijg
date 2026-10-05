@@ -61,10 +61,11 @@ public static class BackupRestore
     // Gibt den Ordner mit dem bisherigen Stand zurück.
     public static string Restore(string file, string password, string dataDir, string auditPath)
     {
-        var work = Path.Combine(Path.GetTempPath(), $"zwijg-zurueck-{Guid.NewGuid():N}");
+        var temp = SecureTemp.CreateDirectory("zwijg-zurueck");
+        var work = Path.Combine(temp, "dateien");
         try
         {
-            BackupArchive.Extract(file, work, password);
+            BackupArchive.Extract(file, work, password, temp);
             if (!File.Exists(Path.Combine(work, "zwijg-sicherung.json")) || !File.Exists(Path.Combine(work, "data", "settings.json")))
                 throw new InvalidDataException("In der Datei fehlen die Einstellungen, das ist keine vollständige Sicherung.");
 
@@ -102,8 +103,7 @@ public static class BackupRestore
         }
         finally
         {
-            if (Directory.Exists(work))
-                Directory.Delete(work, recursive: true);
+            SecureTemp.Delete(temp);
         }
     }
 

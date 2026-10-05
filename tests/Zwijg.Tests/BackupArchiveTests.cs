@@ -60,6 +60,23 @@ public class BackupArchiveTests : IDisposable
     }
 
     [Fact]
+    public void Arbeitsordner_nur_fuer_den_eigenen_Benutzer()
+    {
+        var dir = SecureTemp.CreateDirectory("zwijg-test");
+        try
+        {
+            Assert.True(Directory.Exists(dir));
+            if (!OperatingSystem.IsWindows())
+                Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute, File.GetUnixFileMode(dir));
+        }
+        finally
+        {
+            SecureTemp.Delete(dir);
+        }
+        Assert.False(Directory.Exists(dir));
+    }
+
+    [Fact]
     public void Fremde_Datei_wird_abgelehnt()
     {
         Assert.Throws<InvalidDataException>(() => BackupArchive.Decrypt(new MemoryStream("PK zip"u8.ToArray()), new MemoryStream(), "pw"));
@@ -78,11 +95,11 @@ public class BackupArchiveTests : IDisposable
         {
             ["settings.json"] = Path.Combine(src, "settings.json"),
             ["keys/key-1.xml"] = Path.Combine(src, "keys", "key-1.xml"),
-        }, "pw");
+        }, "pw", _dir);
 
         Assert.False(File.Exists(file + ".teil"));
         var target = Path.Combine(_dir, "ziel");
-        var names = BackupArchive.Extract(file, target, "pw");
+        var names = BackupArchive.Extract(file, target, "pw", _dir);
 
         Assert.Equal(["settings.json", "keys/key-1.xml"], names);
         Assert.Equal("{ \"a\": 1 }", File.ReadAllText(Path.Combine(target, "settings.json")));
@@ -103,7 +120,7 @@ public class BackupArchiveTests : IDisposable
         using (var output = File.Create(file))
             BackupArchive.Encrypt(zip, output, "pw");
 
-        Assert.Throws<InvalidDataException>(() => BackupArchive.Extract(file, Path.Combine(_dir, "ziel"), "pw"));
+        Assert.Throws<InvalidDataException>(() => BackupArchive.Extract(file, Path.Combine(_dir, "ziel"), "pw", _dir));
         Assert.False(File.Exists(Path.Combine(_dir, "boese.txt")));
     }
 }
