@@ -4,6 +4,29 @@ Was sich in den einzelnen Versionen von Zwijg geändert hat. Die neueste Version
 
 Ein neuer Abschnitt entsteht mit dem Workflow **Changelog vorbereiten** aus den gemergten Pull Requests. Steht ein Abschnitt **Sicherheit** drin, zeigt Zwijg das Update als Sicherheitsupdate an.
 
+## 0.4.0 (2026-10-05)
+
+### Wichtig beim Update
+
+- **Automatisch abmelden:** Nach 30 Minuten ohne Eingabe meldet Zwijg ab, auch bei "Angemeldet bleiben" und wenn der Browser Tab geschlossen war. Admins stellen die Zeit unter **Benutzer** ein, 0 heißt nie.
+- **Dateien verschlüsseln** ist neu und zuerst ausgeschaltet. Admins schalten es unter **Verwaltung**, **Dateien** ein.
+
+### Sicherheit
+
+- Die tägliche Sicherung legt ihre unverschlüsselten Zwischenstände nur noch in einem Ordner ab, den andere Benutzer auf dem Rechner nicht lesen können. Reste nach einem Absturz werden beim nächsten Start gelöscht. (#35, @kschnieders)
+
+### Neu
+
+- **Patientenfeld:** Name und Geburtsdatum einmal eintragen, Zwijg versteckt sie in der ganzen Unterhaltung, auch wenn nur der Nachname oder ein anderes Datumsformat vorkommt. Das Feld wird verschlüsselt gespeichert. (#29, @kschnieders)
+- **Dateien verschlüsseln:** Röntgenbilder, Befunde und andere Dateien mit Kennwort als AES-256 ZIP verschlüsseln, für Empfänger ohne KIM. Der Empfänger öffnet sie mit 7-Zip, WinRAR oder Keka. (#34, #37, @kschnieders)
+- **Darstellung:** Praxisname, Logo und eigene Farben, auch auf der Anmeldeseite. (#33, @kschnieders)
+- **Automatisch abmelden** nach einer einstellbaren Zeit ohne Eingabe. (#32, #35, @kschnieders)
+
+### Verbesserungen
+
+- Das Patientenfeld gibt es auch bei **Dokument** und **Text schützen**. (#32, @kschnieders)
+- Die Fenster **Über Zwijg** und **Version und Updates** sind breiter und besser lesbar. (#37, @kschnieders)
+
 ## 0.3.0 (2026-10-03)
 
 ### Wichtig beim Update
