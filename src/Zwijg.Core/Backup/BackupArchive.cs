@@ -22,10 +22,11 @@ public static class BackupArchive
 
     public sealed class WrongPasswordException() : Exception("Das Passwort ist falsch oder die Datei ist beschädigt.");
 
-    // Dateien: Name in der Sicherung, zum Beispiel "keys/key-1.xml", und Pfad auf der Platte
-    public static void Create(string target, IReadOnlyDictionary<string, string> files, string password)
+    // Dateien: Name in der Sicherung, zum Beispiel "keys/key-1.xml", und Pfad auf der Platte.
+    // workDir: geschützter Ordner für den unverschlüsselten Zwischenstand, siehe SecureTemp.
+    public static void Create(string target, IReadOnlyDictionary<string, string> files, string password, string workDir)
     {
-        var zip = Path.GetTempFileName();
+        var zip = Path.Combine(workDir, $"inhalt-{Guid.NewGuid():N}.zip");
         try
         {
             using (var archive = ZipFile.Open(zip, ZipArchiveMode.Update))
@@ -48,9 +49,9 @@ public static class BackupArchive
     }
 
     // Packt die Sicherung in einen Ordner aus und gibt die Namen der Dateien zurück
-    public static IReadOnlyList<string> Extract(string source, string targetDir, string password)
+    public static IReadOnlyList<string> Extract(string source, string targetDir, string password, string workDir)
     {
-        var zip = Path.GetTempFileName();
+        var zip = Path.Combine(workDir, $"inhalt-{Guid.NewGuid():N}.zip");
         try
         {
             using (var input = File.OpenRead(source))

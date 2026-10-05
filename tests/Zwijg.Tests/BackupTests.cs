@@ -108,7 +108,7 @@ public class BackupTests(BackupFactory factory) : IClassFixture<BackupFactory>
         {
             ["data/settings.json"] = Path.Combine(source, "settings.json"),
             ["zwijg-sicherung.json"] = Path.Combine(source, "info.json"),
-        }, Password);
+        }, Password, root);
 
         var dataDir = Path.Combine(root, "data");
         Directory.CreateDirectory(Path.Combine(dataDir, "models"));
