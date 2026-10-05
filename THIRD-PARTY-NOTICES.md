@@ -15,6 +15,7 @@ Zwijg selbst steht unter der GNU AGPL 3.0 mit Zusatzbedingungen (siehe `LICENSE`
 | SQLitePCLRaw | 2.1.12 | Apache 2.0 | SourceGear, LLC | https://github.com/ericsink/SQLitePCL.raw |
 | SQLite (in SQLitePCLRaw enthalten) | 3.x | Public Domain | D. Richard Hipp und andere | https://sqlite.org |
 | Docnet.Core | 2.6.0 | MIT | Modestas Petravicius | https://github.com/GowenGit/docnet |
+| SharpZipLib | 1.4.2 | MIT | ICSharpCode und Mitwirkende | https://github.com/icsharpcode/SharpZipLib |
 | Whisper.net, Whisper.net.Runtime | 1.9.1 | MIT | Sandro Hanea | https://github.com/sandrohanea/whisper.net |
 | whisper.cpp und ggml (in Whisper.net.Runtime enthalten) | | MIT | Georgi Gerganov und Mitwirkende | https://github.com/ggerganov/whisper.cpp |
 | PDFium (in Docnet.Core enthalten) | | BSD 3-Clause, enthält Teile unter weiteren freien Lizenzen (siehe `licenses/PDFium.txt`) | The PDFium Authors | https://pdfium.googlesource.com/pdfium |

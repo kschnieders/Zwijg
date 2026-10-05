@@ -64,6 +64,17 @@ Schützt man danach einen weiteren Text zum selben Patienten, behält derselbe N
 
 Ein kopierter Text verlässt die Praxis. Deshalb gelten dieselben Regeln wie für die Cloud: Wer nicht in die Cloud darf, sieht die Seite nicht, und zu sensible Texte, etwa Person mit Diagnose, lehnt Zwijg ab.
 
+## Dateien verschlüsseln
+
+Für Empfänger ohne KIM, etwa Patienten oder Gutachter. Admins schalten den Bereich unter **Darstellung** ein.
+
+1. Links auf **Dateien verschlüsseln**, Dateien hineinziehen
+2. **Erzeugen** klicken, das Kennwort ist gut diktierbar
+3. **Verschlüsseln und speichern**. Heraus kommt eine ZIP Datei mit AES-256, auch die Dateinamen sind verschlüsselt
+4. Datei verschicken, das Kennwort **getrennt** weitergeben, am besten am Telefon oder per SMS
+
+Der Empfänger öffnet die Datei mit 7-Zip, WinRAR oder auf dem Mac mit Keka, darin liegt `dokumente.zip` mit den Dateien. Verschlüsselte ZIP Dateien, die man selbst bekommt, öffnet Zwijg rechts unter **Verschlüsselte Datei öffnen**.
+
 ## Dokumente prüfen und befragen
 
 1. Links auf **Dokument**

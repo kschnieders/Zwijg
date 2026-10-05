@@ -1220,3 +1220,13 @@ mark.check { background: var(--warn-soft); color: inherit; border-radius: 3px; p
 .brand-preview-line.short { width: 60%; }
 .brand-preview-btn { height: 22px; border-radius: 8px; background: var(--accent); margin-top: 6px; }
 input[type=range] { accent-color: var(--accent); }
+
+/* Dateien verschlüsseln */
+.files-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+@media (max-width: 960px) { .files-layout { grid-template-columns: 1fr; } }
+#fiList { margin-top: 10px; }
+#fiList .backup-file .icon-btn { width: 26px; height: 26px; }
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop.small-drop { padding: 22px 16px; }
+.files-password { grid-column: 1 / -1; }
+.files-password input { font-family: ui-monospace, Consolas, monospace; letter-spacing: .02em; }
