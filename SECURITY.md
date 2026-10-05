@@ -28,7 +28,7 @@ Bitte nur ausgedachte Daten wie "Max Mustermann" verwenden, nie echte Patientend
 
 ## Ablauf
 
-Zwijg wird aktuell von einer Person gepflegt. Die Fristen gelten deshalb in der Regel, im Urlaub oder bei Krankheit kann es ausnahmsweise etwas länger dauern.
+Zwijg wird aktuell von einer Person gepflegt. Im Urlaub oder bei Krankheit kann es deshalb ausnahmsweise etwas länger dauern.
 
 - **Eingang bestätigt** in der Regel innerhalb von 7 Tagen
 - **Erste Einschätzung** in der Regel innerhalb von 14 Tagen
