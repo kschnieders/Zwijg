@@ -2,6 +2,8 @@
 
 Danke, dass du Zwijg verbessern willst. Fehlermeldungen, Ideen und Pull Requests sind willkommen.
 
+Sicherheitslücken bitte nicht als Issue, sondern vertraulich melden, siehe [SECURITY.md](SECURITY.md). Für den Umgang miteinander gilt der [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Wichtig: keine echten Patientendaten
 
 Bitte nie echte Namen, Geburtsdaten, Versichertennummern oder Befunde in Issues, Pull Requests, Tests oder Screenshots verwenden. Nur ausgedachte Beispiele wie "Max Mustermann".
