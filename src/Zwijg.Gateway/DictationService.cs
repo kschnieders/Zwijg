@@ -99,6 +99,7 @@ public sealed class DictationService(
                 res.EnsureSuccessStatusCode();
                 var total = res.Content.Headers.ContentLength ?? model.Bytes;
 
+                using var sha = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
                 await using (var source = await res.Content.ReadAsStreamAsync())
                 await using (var dest = File.Create(part))
                 {
@@ -108,9 +109,18 @@ public sealed class DictationService(
                     while ((read = await source.ReadAsync(buffer)) > 0)
                     {
                         await dest.WriteAsync(buffer.AsMemory(0, read));
+                        sha.AppendData(buffer, 0, read);
                         received += read;
                         _download = new(model.Id, received, total, true, null);
                     }
+                }
+
+                if (!Convert.ToHexStringLower(sha.GetHashAndReset()).Equals(model.Sha256, StringComparison.Ordinal))
+                {
+                    File.Delete(part);
+                    logger.LogWarning("Sprachmodell {Model}: Prüfsumme stimmt nicht, Datei verworfen", model.Id);
+                    _download = new(model.Id, 0, total, false, "Die Datei ist beschädigt oder verändert, die Prüfsumme stimmt nicht. Bitte erneut laden.");
+                    return;
                 }
 
                 File.Move(part, target, overwrite: true);
