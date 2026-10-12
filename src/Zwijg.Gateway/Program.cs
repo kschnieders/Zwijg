@@ -132,6 +132,7 @@ var dataDir = Path.GetDirectoryName(Path.GetFullPath(gateway.SettingsPath))!;
 DataDirectoryCheck.EnsureWritable(
     [dataDir, KeyDirectory(gateway), Path.GetDirectoryName(Path.GetFullPath(gateway.Audit.DatabasePath))!],
     [gateway.SettingsPath, Path.Combine(dataDir, "history.db"), gateway.Audit.DatabasePath, gateway.Audit.DatabasePath + ".key", gateway.Audit.DatabasePath + ".kopf"]);
+DataDirectoryCheck.RestrictToOwner([dataDir, KeyDirectory(gateway)], app.Logger);
 
 // Neue Version: Daten sichern, bevor Einstellungen und Datenbanken umgestellt werden. Das Update Skript sichert
 // beim Probestart schon selbst und schaltet das hier mit Zwijg:SkipUpdateSnapshot ab.
