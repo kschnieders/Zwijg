@@ -28,6 +28,10 @@ builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Ad
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 
+// Uploads ganz im Speicher halten. Sonst legt ASP.NET alles über 64 KB unverschlüsselt in den allgemeinen Temp Ordner.
+// Mehr als 30 MB lässt Kestrel ohnehin nicht zu.
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o => o.MemoryBufferThreshold = 30 * 1024 * 1024);
+
 // Schlüssel zum Verschlüsseln der API Schlüssel liegen neben den Einstellungen.
 // Mit Zertifikat (Zwijg:KeyProtection) werden sie damit verschlüsselt, sonst unter Windows mit DPAPI
 // an das Benutzerkonto gebunden. Unter Linux und in Docker liegen sie ohne Zertifikat im Klartext.
