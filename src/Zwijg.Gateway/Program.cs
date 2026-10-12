@@ -28,6 +28,10 @@ builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Ad
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 
+// Uploads ganz im Speicher halten. Sonst legt ASP.NET alles über 64 KB unverschlüsselt in den allgemeinen Temp Ordner.
+// Mehr als 30 MB lässt Kestrel ohnehin nicht zu.
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o => o.MemoryBufferThreshold = 30 * 1024 * 1024);
+
 // Schlüssel zum Verschlüsseln der API Schlüssel liegen neben den Einstellungen.
 // Mit Zertifikat (Zwijg:KeyProtection) werden sie damit verschlüsselt, sonst unter Windows mit DPAPI
 // an das Benutzerkonto gebunden. Unter Linux und in Docker liegen sie ohne Zertifikat im Klartext.
@@ -132,6 +136,7 @@ var dataDir = Path.GetDirectoryName(Path.GetFullPath(gateway.SettingsPath))!;
 DataDirectoryCheck.EnsureWritable(
     [dataDir, KeyDirectory(gateway), Path.GetDirectoryName(Path.GetFullPath(gateway.Audit.DatabasePath))!],
     [gateway.SettingsPath, Path.Combine(dataDir, "history.db"), gateway.Audit.DatabasePath, gateway.Audit.DatabasePath + ".key", gateway.Audit.DatabasePath + ".kopf"]);
+DataDirectoryCheck.RestrictToOwner([dataDir, KeyDirectory(gateway)], app.Logger);
 
 // Neue Version: Daten sichern, bevor Einstellungen und Datenbanken umgestellt werden. Das Update Skript sichert
 // beim Probestart schon selbst und schaltet das hier mit Zwijg:SkipUpdateSnapshot ab.

@@ -2,11 +2,14 @@ using Whisper.net;
 
 namespace Zwijg.Core.Speech;
 
-public sealed record SpeechModel(string Id, string Label, string Note, long Bytes)
+public sealed record SpeechModel(string Id, string Label, string Note, long Bytes, string Sha256)
 {
+    // Fester Stand, damit die Prüfsumme immer passt
+    public const string Revision = "5359861c739e955e79d9a303bcbc70fb988958b1";
+
     public string FileName => $"ggml-{Id}.bin";
 
-    public string Url => $"https://huggingface.co/ggerganov/whisper.cpp/resolve/main/{FileName}";
+    public string Url => $"https://huggingface.co/ggerganov/whisper.cpp/resolve/{Revision}/{FileName}";
 }
 
 // Spracherkennung mit Whisper (whisper.cpp über Whisper.net), komplett auf diesem Rechner.
@@ -15,9 +18,12 @@ public sealed class WhisperTranscriber : IDisposable
 {
     public static readonly IReadOnlyList<SpeechModel> Models =
     [
-        new("base", "Schnell", "Für kurze, deutliche Diktate. Läuft auch auf schwachen Rechnern.", 147_951_465),
-        new("small", "Gut", "Guter Kompromiss für den Praxisalltag.", 487_601_967),
-        new("large-v3-turbo-q5_0", "Sehr gut", "Versteht am meisten, braucht aber einen kräftigen Rechner.", 574_041_195),
+        new("base", "Schnell", "Für kurze, deutliche Diktate. Läuft auch auf schwachen Rechnern.", 147_951_465,
+            "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe"),
+        new("small", "Gut", "Guter Kompromiss für den Praxisalltag.", 487_601_967,
+            "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b"),
+        new("large-v3-turbo-q5_0", "Sehr gut", "Versteht am meisten, braucht aber einen kräftigen Rechner.", 574_041_195,
+            "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2"),
     ];
 
     // Fachwörter als Hinweis, dann schreibt Whisper eher "Metformin" als "Med Formin"
