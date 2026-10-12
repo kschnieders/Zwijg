@@ -206,6 +206,13 @@ app.Use(async (ctx, next) =>
     h["Referrer-Policy"] = "no-referrer";
     h["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+    h["Permissions-Policy"] = "microphone=(self), camera=(), geolocation=(), payment=(), usb=()";
+    h["Cross-Origin-Opener-Policy"] = "same-origin";
+
+    // Antworten mit Patientendaten nie im Browser Cache ablegen
+    var path = ctx.Request.Path;
+    if (path.StartsWithSegments("/v1") || path.StartsWithSegments("/admin") || path.StartsWithSegments("/auth"))
+        h.CacheControl = "no-store";
     await next();
 });
 
