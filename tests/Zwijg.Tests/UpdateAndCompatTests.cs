@@ -223,6 +223,11 @@ public class UpdateAndCompatTests(UpdateFactory factory) : IClassFixture<UpdateF
         Assert.Equal("DENY", res.Headers.GetValues("X-Frame-Options").Single());
         Assert.Contains("script-src 'self'", res.Headers.GetValues("Content-Security-Policy").Single());
         Assert.Equal("nosniff", res.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.Contains("microphone=(self)", res.Headers.GetValues("Permissions-Policy").Single());
+
+        // API Antworten mit Patientendaten nicht im Browser Cache
+        var me = await factory.CreateClient().GetAsync("/v1/me");
+        Assert.True(me.Headers.CacheControl?.NoStore);
 
         // Nach einem Update soll der Browser die neue Oberfläche holen und nicht die alte aus dem Speicher nehmen
         foreach (var file in new[] { "/", "/js/app.js", "/css/app.css" })
