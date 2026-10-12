@@ -50,6 +50,16 @@ public class GatewayTests(GatewayFactory factory) : IClassFixture<GatewayFactory
         messages = new[] { new { role = "user", content } }
     };
 
+    [UnixFact]
+    [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public void Datenordner_nur_fuer_den_eigenen_Benutzer()
+    {
+        factory.CreateClient();
+        var owner = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+        Assert.Equal(owner, File.GetUnixFileMode(factory.DataDir));
+        Assert.Equal(owner, File.GetUnixFileMode(Path.Combine(factory.DataDir, "keys")));
+    }
+
     [Fact]
     public async Task Ohne_Schluessel_gibt_es_401()
     {
