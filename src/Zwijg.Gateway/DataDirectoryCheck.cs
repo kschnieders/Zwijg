@@ -35,6 +35,28 @@ public static class DataDirectoryCheck
         }
     }
 
+    // Unter Linux und macOS darf nur der Benutzer von Zwijg hinein. Ohne Zertifikat liegen in keys die Schlüssel im Klartext.
+    public static void RestrictToOwner(IEnumerable<string> directories, ILogger logger)
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var shared = new[] { Path.GetTempPath(), "/" }.Select(p => Path.TrimEndingDirectorySeparator(Path.GetFullPath(p)));
+        foreach (var dir in directories.Select(d => Path.TrimEndingDirectorySeparator(Path.GetFullPath(d))).Distinct())
+        {
+            if (shared.Contains(dir) || !Directory.Exists(dir))
+                continue;
+            try
+            {
+                File.SetUnixFileMode(dir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+            {
+                logger.LogWarning("Rechte von {Dir} ließen sich nicht einschränken. Bitte chmod 700 setzen.", dir);
+            }
+        }
+    }
+
     private static InvalidOperationException NotWritable(string path, Exception inner) => new(
         $"Zwijg darf {path} nicht ändern. Der Benutzer, unter dem Zwijg läuft, braucht Schreibrechte auf den Datenordner und seine Dateien. " +
         "In Docker gehört ein älteres Volume meist noch root, dann einmalig: " +

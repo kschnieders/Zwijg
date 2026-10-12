@@ -104,6 +104,8 @@ Wichtig unter Windows: Die Schlüssel in `keys` sind zusätzlich an das Windows 
 
 Wer eine Sicherung des Ordners `data` hat, hat auch die Schlüssel. Unter Linux und in Docker liegen sie ohne Zertifikat (siehe unten) im Klartext. Damit lassen sich API Schlüssel und gespeicherte Unterhaltungen entschlüsseln und Anmeldungen fälschen. Das betrifft auch `audit.db.key`: Dieser Schlüssel für die Echtheitsprüfung des Protokolls ist mit den Schlüsseln in `keys` verschlüsselt. Wer beides hat, kann Protokolleinträge ändern und die Hashes passend neu berechnen.
 
+Unter Linux setzt Zwijg beim Start die Ordner `data` und `keys` auf `chmod 700`, damit andere Benutzer auf dem Server nicht hineinsehen.
+
 - Die Sicherungen von Zwijg selbst sind mit dem Passwort verschlüsselt. Eigene Sicherungen des Ordners `data` verschlüsselt ablegen, zum Beispiel in einem verschlüsselten Archiv oder auf einem verschlüsselten Laufwerk, und nicht frei im Praxisnetz.
 - Das gilt auch für die Sicherungen der Update Skripte, `data-sicherung-*.tar.gz` (Linux) und `data-sicherung-*.zip` (Windows) im Zwijg Ordner. Nicht mehr gebrauchte Sicherungen löschen.
 - Ein Zertifikat für die Schlüssel getrennt von den Daten aufbewahren. Wer nur die Datensicherung hat, kann dann nichts entschlüsseln.
