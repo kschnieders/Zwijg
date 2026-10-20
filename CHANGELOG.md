@@ -4,6 +4,19 @@ Was sich in den einzelnen Versionen von Zwijg geändert hat. Die neueste Version
 
 Ein neuer Abschnitt entsteht mit dem Workflow **Changelog vorbereiten** aus den gemergten Pull Requests. Steht ein Abschnitt **Sicherheit** drin, zeigt Zwijg das Update als Sicherheitsupdate an.
 
+## 0.4.1 (2026-10-20)
+
+### Wichtig beim Update
+
+- **Nur Linux:** Zwijg setzt die Ordner `data` und `keys` beim Start auf `chmod 700`. Braucht ein anderes Programm Zugriff, etwa eine eigene Sicherung, muss es unter demselben Benutzer oder als root laufen.
+
+### Sicherheit
+
+- Unter Linux können andere Benutzer auf dem Server nicht mehr in die Datenordner von Zwijg sehen. Ohne Zertifikat liegen dort die Schlüssel für Verlauf und Anmeldung. (#40, @kschnieders)
+- Hochgeladene Dokumente und Diktate bleiben im Arbeitsspeicher und landen nicht mehr kurz unverschlüsselt im Temp Ordner. (#41, @kschnieders)
+- Das Sprachmodell fürs Diktieren wird nur noch benutzt, wenn seine Prüfsumme stimmt. Ein verändertes Modell wird verworfen. (#42, @kschnieders)
+- Antworten mit Patientendaten landen nicht mehr im Browser Cache. Das Mikrofon darf nur Zwijg selbst nutzen, Kamera und Standort sind gesperrt. (#43, @kschnieders)
+
 ## 0.4.0 (2026-10-05)
 
 ### Wichtig beim Update
