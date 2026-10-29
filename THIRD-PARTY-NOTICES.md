@@ -7,9 +7,9 @@ Zwijg selbst steht unter der GNU AGPL 3.0 mit Zusatzbedingungen (siehe `LICENSE`
 | Paket | Version | Lizenz | Rechteinhaber | Projekt |
 |---|---|---|---|---|
 | .NET und ASP.NET Core | 9 | MIT | .NET Foundation und Mitwirkende | https://github.com/dotnet |
-| Anthropic C# SDK | 12.51.0 | MIT | Anthropic | https://github.com/anthropics/anthropic-sdk-csharp |
+| Anthropic C# SDK | 13.3.0 | Apache 2.0, ältere Beiträge unter MIT | Anthropic, PBC | https://github.com/anthropics/anthropic-sdk-csharp |
 | Microsoft.Extensions.AI.Abstractions | 10.5.1 | MIT | Microsoft Corporation | https://github.com/dotnet/extensions |
-| Microsoft.Data.Sqlite | 10.0.12 | MIT | Microsoft Corporation | https://github.com/dotnet/efcore |
+| Microsoft.Data.Sqlite | 10.0.14 | MIT | Microsoft Corporation | https://github.com/dotnet/efcore |
 | System.Text.Json, System.Text.Encodings.Web, System.IO.Pipelines, System.Net.ServerSentEvents, System.Memory | 10.0.x, 4.5.3 | MIT | Microsoft Corporation, .NET Foundation | https://github.com/dotnet/runtime |
 | PdfPig | 0.1.16 | Apache 2.0, enthält Teile unter BSD und der Adobe AFM Lizenz (siehe unten) | UglyToad und Mitwirkende | https://github.com/UglyToad/PdfPig |
 | SQLitePCLRaw | 2.1.12 | Apache 2.0 | SourceGear, LLC | https://github.com/ericsink/SQLitePCL.raw |
