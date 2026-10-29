@@ -47,9 +47,9 @@ public sealed class AnthropicProvider(string? apiKey, string model, string? effo
             if (role == "system")
                 system.Add(content);
             else if (role == "assistant")
-                messages.Add(new BetaMessageParam { Role = Role.Assistant, Content = content });
+                messages.Add(new BetaAssistantMessageParam { Content = content });
             else
-                messages.Add(new BetaMessageParam { Role = Role.User, Content = content });
+                messages.Add(new BetaUserMessageParam { Content = content });
         }
 
         var model = request["model"]?.GetValue<string>() ?? Model;
